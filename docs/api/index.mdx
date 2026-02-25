@@ -1,0 +1,32 @@
+---
+title: API Reference
+description: Complete reference for GlanceDefaultUI static methods, GlanceUIDelegate protocol, SDK types, and localization constants.
+asIndexPage: true
+---
+
+import { Cards } from 'nextra/components'
+
+# API Reference
+
+<Cards num={2}>
+  <Cards.Card title="GlanceDefaultUI" href="./glance-default-ui" arrow>
+    Static methods: `setVisitorParams`, `start`, `endSession`, `setPresence`, `setDelegate`, `startHostedSession`, `stopHostedSession`.
+  </Cards.Card>
+  <Cards.Card title="GlanceUIDelegate" href="./glance-ui-delegate" arrow>
+    Protocol with 30 callback methods for session lifecycle, Presence, video, and errors.
+  </Cards.Card>
+  <Cards.Card title="Types & Enums" href="./types" arrow>
+    `GlanceVisitorInitParams`, `GlanceVideoMode`, `GlanceTimeout`, `GlanceError`, `GlanceSDKEventCode`, `GlanceVisibility`, `GlanceLocation`, `GlanceService`.
+  </Cards.Card>
+  <Cards.Card title="Localization Constants" href="./localization-constants" arrow>
+    All 65 `GlanceLocalizedStringsConstants` string keys for dialogs, labels, and buttons.
+  </Cards.Card>
+</Cards>
+
+## Version differences
+
+| Feature | v7.1 | v7.2 |
+|---|---|---|
+| `setVisitorParams` `fetchSettingsInterval` param | `GlanceDefaultUI.SettingsInterval` | Removed — use `Glance.enableSettings` |
+| `GlanceError.code` type | `EventCode` | `GlanceSDKEventCode` |
+| Remote settings | Via `setVisitorParams` | `Glance.enableSettings(isEnabled:)` / `Glance.setSettingsAPIRefreshInterval` |

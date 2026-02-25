@@ -1,0 +1,60 @@
+---
+title: Glance Default UI – iOS SDK
+description: Out-of-the-box cobrowse UI for iOS apps powered by GlanceSDK. Drop in the Default UI package to get a fully functional session experience with minimal code.
+asIndexPage: true
+---
+
+import { Cards, Callout } from 'nextra/components'
+
+# Glance Default UI – iOS SDK
+
+**Glance Default UI** (`GlanceDefaultUI`) is an out-of-the-box cobrowse package for iOS that layers a complete session UI on top of GlanceSDK. It ships ready-made dialogs for session consent, session key display, video, Presence (1-Click Connect), and hosted sessions — so you spend minutes integrating, not days building UI.
+
+## What's included
+
+- App Share consent and session-key dialogs
+- Video consent dialog with camera preview
+- Presence (agent-initiated) terms dialog
+- Hosted session key display and error handling
+- Keyboard and background masking out of the box
+- Fully localizable string constants
+
+## Requirements
+
+| Requirement | Value |
+|---|---|
+| iOS | 15+ |
+| Swift Tools | 5.7+ |
+| GlanceSDK | ≥ 7.2.0 (pulled in automatically via SPM) |
+| Permissions | Network; Camera + Microphone only if using video |
+
+## Quick links
+
+<Cards num={2}>
+  <Cards.Card title="Getting Started" href="./getting-started" arrow>
+    Add the SDK via SPM, configure visitor params, and set a delegate in under 10 minutes.
+  </Cards.Card>
+  <Cards.Card title="Guides" href="./guides" arrow>
+    Step-by-step walkthroughs for sessions, video, Presence, content masking, and localization.
+  </Cards.Card>
+  <Cards.Card title="API Reference" href="../api" arrow>
+    Full reference for GlanceDefaultUI methods, GlanceUIDelegate protocol, and all SDK types.
+  </Cards.Card>
+  <Cards.Card title="Troubleshooting" href="./troubleshooting" arrow>
+    Diagnose and fix common integration issues with symptoms, causes, and resolutions.
+  </Cards.Card>
+</Cards>
+
+## Version notes
+
+<Callout type="info">
+**v7.2 (current):** `setVisitorParams` no longer accepts `fetchSettingsInterval`. To enable remote settings, call `Glance.enableSettings(isEnabled: true)` (1-hour refresh) or `Glance.setSettingsAPIRefreshInterval(refreshInterval:)` for a custom interval. `GlanceError.code` is now typed as `GlanceSDKEventCode`.
+
+**v7.1:** `setVisitorParams` accepts `fetchSettingsInterval: GlanceDefaultUI.SettingsInterval`. `GlanceError.code` is typed as `EventCode`.
+</Callout>
+
+## Repository
+
+- **SPM URL:** `https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases`
+- **XCFrameworks:** `https://gitlab.com/glance-sdk-public/glance-framework-ios`
+- **README:** [gitlab.com/glance-sdk-public/glance-default-ui-ios-releases](https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases/-/blob/main/README.md)

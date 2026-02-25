@@ -1,0 +1,149 @@
+---
+title: Presence (1-Click Connect)
+description: Enable agents to initiate cobrowse sessions to a known visitor without requiring the visitor to generate a session key first.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Presence (1-Click Connect)
+
+Presence allows a support agent to push a session request directly to a specific visitor based on their visitor ID. The visitor sees a consent dialog; on acceptance the session starts automatically. No session key exchange is needed.
+
+## How it works
+
+1. Your app calls `setPresence(true)` with a stable `visitorid`.
+2. The SDK connects to the Glance Presence service.
+3. Your delegate receives `presenceDidConnect()`.
+4. When an agent requests a session, your delegate receives `presenceShowTerms(sessionParams:)`. The Default UI shows the consent dialog.
+5. The visitor accepts; the standard session flow begins (`receivedSessionCode`, `sessionConnected`, `sessionAgentConnected`).
+
+## Prerequisites
+
+- [Initial Setup](../getting-started/setup) completed.
+- A **stable `visitorid`** (e.g. your CRM user ID) in `GlanceVisitorInitParams`. Do not use a random or generic value.
+- Presence enabled for your Glance group (contact your Glance admin).
+
+## Implementation
+
+<Steps>
+
+### Enable video in params (if needed)
+
+If the agent may request a video session via Presence, set `video = true`:
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.visitorid = "crm-user-\(currentUser.id)"   // stable, unique
+params.video = false   // true if video sessions are possible
+```
+
+### Call `setPresence` then `setVisitorParams`
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+// Enable Presence
+GlanceDefaultUI.setPresence(
+    true,
+    timeout: nil,             // Double? – presence connection timeout
+    maxConnectAttempts: nil   // Int32? – nil = unlimited
+)
+
+// Then call setVisitorParams with the same visitorid
+GlanceDefaultUI.setVisitorParams(params)
+```
+
+<Callout type="warning">
+Always call `setPresence(true)` **before** `setVisitorParams(...)` when enabling Presence. Both calls are required, and `visitorid` must be non-empty.
+</Callout>
+
+### Handle Presence delegate callbacks
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+extension MySessionViewModel: GlanceUIDelegate {
+
+    // Presence connection established
+    func presenceDidConnect() {
+        isPresenceConnected = true
+    }
+
+    // Presence disconnected
+    func presenceDidDisconnect() {
+        isPresenceConnected = false
+    }
+
+    // Agent sent a session request — Default UI shows consent dialog
+    func presenceShowTerms(sessionParams: GlanceSessionParams) {
+        // sessionParams contains the requested video mode
+        // Default UI handles the dialog automatically
+    }
+
+    // Session started via Presence (after visitor accepts)
+    func presenceSessionStarted() {
+        print("Session started via Presence")
+    }
+
+    // Presence connection timed out
+    func presenceTimeoutExpired() {
+        showToast("Presence connection timed out.")
+    }
+
+    // Standard session callbacks also fire after the visitor accepts
+    func receivedSessionCode(_ sessionCode: String) {}
+    func sessionConnected(dismissAction: (() -> Void)?) {}
+    func sessionAgentConnected() {}
+    func sessionEnded(_ sessionKey: String?) {}
+
+    func onError(_ error: GlanceError) {
+        showAlert(title: "Error", message: error.message)
+    }
+}
+```
+
+### Disable Presence
+
+When the user logs out or navigates away, disable Presence:
+
+```swift showLineNumbers
+GlanceDefaultUI.setPresence(false)
+```
+
+</Steps>
+
+## Full example
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+func enablePresence() {
+    let params = GlanceVisitorInitParams()
+    params.groupid = 33333
+    params.visitorid = "crm-user-\(currentUser.id)"
+
+    GlanceDefaultUI.setDelegate(self)
+
+    // Enable Presence with a 30-second connection timeout
+    GlanceDefaultUI.setPresence(true, timeout: 30, maxConnectAttempts: 3)
+
+    // Then configure visitor params
+    GlanceDefaultUI.setVisitorParams(params, timeout: nil, maxConnectAttempts: 0)
+}
+
+func disablePresence() {
+    GlanceDefaultUI.setPresence(false)
+}
+```
+
+## Delegate call sequence
+
+| When | Callback |
+|---|---|
+| Presence connection established | `presenceDidConnect()` |
+| Presence disconnected | `presenceDidDisconnect()` |
+| Agent requested session (terms dialog shown) | `presenceShowTerms(sessionParams:)` |
+| Session started after visitor accepts | `presenceSessionStarted()` |
+| Then standard session callbacks | `receivedSessionCode`, `sessionConnected`, `sessionAgentConnected`, `sessionEnded` |
+| Presence connection timed out | `presenceTimeoutExpired()` |
+| Any error | `onError(_:)` |
+
+## Next steps
+
+- [Troubleshooting: Presence](../troubleshooting/video-and-presence#presence-does-not-connect)
+- [GlanceUIDelegate Reference](../../api/glance-ui-delegate)

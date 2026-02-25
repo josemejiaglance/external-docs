@@ -1,0 +1,257 @@
+---
+title: Session Issues
+description: Troubleshoot sessions that fail to start, delegate methods that never fire, dialogs that don't appear, and agents who can't join.
+---
+
+import { Callout } from 'nextra/components'
+
+# Session Issues
+
+## Session fails to start
+
+**Symptoms:** `start()` does nothing. The App Share dialog never appears. No session key is shown.
+
+**Likely causes:**
+- `setVisitorParams` not called before `start()`.
+- `groupid` is zero, negative, or not set.
+- Network unreachable.
+- Missing or incorrect Glance account/group configuration.
+
+**Resolution:**
+
+Call `setVisitorParams` with a valid `GlanceVisitorInitParams` before `start()`. Ensure `groupid` is non-zero and comes from your Glance admin portal.
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333   // must be non-zero, from Glance admin
+
+GlanceDefaultUI.setDelegate(self)
+GlanceDefaultUI.setVisitorParams(params)
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+```
+
+Implement `onError` and check for `EventStartSessionFailed` or `EventInvalidParameter`.
+
+**Related errors:** `EventStartSessionFailed`, `EventInvalidParameter`, `EventInvalidState`
+
+---
+
+## Delegate methods not called
+
+**Symptoms:** `sessionConnected`, `receivedSessionCode`, `onError`, `hostedSessionDidStart`, or `hostedSessionDidEnd` never fire.
+
+**Likely causes:**
+- `GlanceDefaultUI.setDelegate(self)` was never called.
+- Delegate was set **after** `start()` or `startHostedSession()`.
+- The delegate object was deallocated (e.g. a local variable or a weakly-held reference).
+- Wrong object set as delegate.
+
+**Resolution:**
+
+Set the delegate in `init()` or in `onAppear` — **before** the user taps any Start button.
+
+```swift showLineNumbers
+// ✅ In view model init
+class MyViewModel: GlanceUIDelegate {
+    init() {
+        GlanceDefaultUI.setDelegate(self)
+    }
+}
+
+// ✅ In onAppear for tab-based UIs
+.onAppear {
+    GlanceDefaultUI.setDelegate(viewModel)
+}
+```
+
+Ensure the delegate holder is retained strongly (e.g. `@StateObject`, `@ObservedObject`, or stored as a property). A locally-created object will be deallocated immediately.
+
+---
+
+## `EventInvalidParameter`
+
+**Symptoms:** `onError` fires with `error.code == .EventInvalidParameter`. SDK rejects the operation.
+
+**Likely causes:**
+- `groupid` is zero or not set.
+- `videoMode` enum case referenced incorrectly (e.g. `.VideoOff` instead of `VideoOff`).
+- `username` or `password` is empty in a hosted session call.
+- Malformed `GlanceVisitorInitParams`.
+
+**Resolution:**
+
+Check `error.message` for the specific parameter that failed. Verify:
+
+```swift showLineNumbers
+// Correct videoMode syntax (no leading dot, import GlanceCore)
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+
+// groupid must be set and non-zero
+params.groupid = 33333
+
+// Hosted session: non-empty strings
+GlanceDefaultUI.startHostedSession(username: username, password: password)
+```
+
+---
+
+## `EventInvalidState`
+
+**Symptoms:** `onError` fires with `error.code == .EventInvalidState`. `start()` or `startHostedSession()` has no visible effect.
+
+**Likely causes:**
+- `start()` called while a session is already active.
+- `endSession()` called when no session is active.
+- `start()` called before `setVisitorParams()`.
+- `startHostedSession()` called while a hosted session is already running.
+
+**Resolution:**
+
+Track session state via delegate callbacks before starting a new session:
+
+```swift showLineNumbers
+var isSessionActive = false
+
+func sessionAgentConnected() {
+    isSessionActive = true
+}
+
+func sessionEnded(_ sessionKey: String?) {
+    isSessionActive = false
+}
+
+func startSessionIfNeeded() {
+    guard !isSessionActive else { return }
+    GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+}
+```
+
+---
+
+## Default UI dialogs not showing
+
+**Symptoms:** Terms dialog or session key dialog never appears after `start()` succeeds.
+
+**Likely causes:**
+- Another window or overlay covers the Default UI window.
+- `start()` failed silently (check `onError`).
+- The session connected but `sessionConnected` / `receivedSessionCode` suggest an error.
+
+**Resolution:**
+
+Default UI presents dialogs in its own window on top of your app. Ensure no full-screen modal or custom window is blocking it. Confirm `onError` is not receiving an error that would prevent the session from starting. Verify `sessionConnected` fires to confirm the session reached the waiting state.
+
+---
+
+## Agent cannot join (session key rejected)
+
+**Symptoms:** Agent reports the key is invalid or rejected at `www.glance.net/agentjoin`.
+
+**Likely causes:**
+- Session key expired or session already ended.
+- Key mistyped (4 digits, no spaces).
+- Agent using the wrong group or account.
+
+**Resolution:**
+
+The visitor should share the key immediately after `receivedSessionCode` fires (typically over voice). The agent goes to [www.glance.net/agentjoin](https://www.glance.net/agentjoin), logs in, and enters the exact 4-digit key. Start-session timeouts can cause the session to expire — use `startTimeoutExpired()` to detect this.
+
+**Related error:** `EventJoinFailed`
+
+---
+
+## `startTimeoutExpired` — agent did not join in time
+
+**Symptoms:** `startTimeoutExpired()` delegate fires. Session key was displayed but no agent connected.
+
+**Likely causes:**
+- Agent did not join within the configured timeout.
+- Timeout configured too short.
+- Agent on wrong join page or entered wrong key.
+
+**Resolution:**
+
+Increase or remove the timeout in `start()`:
+
+```swift showLineNumbers
+// No timeout — wait indefinitely
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+
+// Longer timeout — 3 minutes
+let timeout = GlanceTimeout(timeInSeconds: 180, type: .default)
+GlanceDefaultUI.start(key: nil, timeout: timeout, videoMode: VideoOff)
+```
+
+Implement `startTimeoutExpired()` to inform the user:
+
+```swift showLineNumbers
+func startTimeoutExpired() {
+    showToast("No agent joined in time. Please try again.")
+}
+```
+
+---
+
+## `initTimeoutExpired` — initialization timed out
+
+**Symptoms:** `initTimeoutExpired()` delegate fires. SDK initialization does not complete.
+
+**Likely causes:**
+- Network slow or unreachable during init.
+- Init timeout value too low.
+- DNS, proxy, or firewall blocking Glance endpoints.
+
+**Resolution:**
+
+Increase or remove the timeout in `setVisitorParams`:
+
+```swift showLineNumbers
+GlanceDefaultUI.setVisitorParams(
+    params,
+    timeout: nil,   // nil = no timeout
+    maxConnectAttempts: 0
+)
+```
+
+Implement `initTimeoutExpired()` to show a message:
+
+```swift showLineNumbers
+func initTimeoutExpired() {
+    showToast("Could not connect. Check your network and try again.")
+}
+```
+
+---
+
+## Connection warning during session
+
+**Symptoms:** Network quality degrades mid-session. Agent or visitor experiences poor video/share quality.
+
+**Resolution:**
+
+Implement `onEvent` to detect `EventConnectionWarning` and `EventClearWarning`:
+
+```swift showLineNumbers
+func onEvent(_ event: GlanceEvent) {
+    switch event.code {
+    case .EventConnectionWarning:
+        showBanner("Connection unstable")
+    case .EventClearWarning:
+        hideBanner()
+    default:
+        break
+    }
+}
+```
+
+Suggest stable Wi-Fi or disabling VPN to the user.
+
+**Related errors:** `EventConnectionWarning`, `EventException`
+
+---
+
+## Related
+
+- [Errors & Timeouts guide](../guides/start-session)
+- [GlanceUIDelegate reference](../../api/glance-ui-delegate)
+- [Types: GlanceSDKEventCode](../../api/types#glancesdkeventcode)

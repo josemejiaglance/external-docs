@@ -1,0 +1,407 @@
+---
+description: Nextra v4 conventions, App Router patterns, and migration rules
+alwaysApply: true
+---
+
+# Nextra v4 Standards
+
+## App Router Only
+
+Nextra v4 uses Next.js App Router exclusively. Pages Router is discontinued.
+
+- Place MDX files in `content/` directory (catch-all route) or use `page.{md,mdx}` convention
+- Add `app/[[...mdxPath]]/page.jsx` as the gateway to the `content/` directory
+
+## Layout Setup
+
+```jsx
+// app/layout.jsx
+import { Footer, Layout, Navbar } from 'nextra-theme-docs'
+import { Banner, Head } from 'nextra/components'
+import { getPageMap } from 'nextra/page-map'
+import 'nextra-theme-docs/style.css' // Required – no longer auto-imported
+
+export default async function RootLayout({ children }) {
+  return (
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <Head />
+      <body>
+        <Layout
+          navbar={<Navbar logo={<b>My Docs</b>} projectLink="..." />}
+          pageMap={await getPageMap()}
+          footer={<Footer>MIT {new Date().getFullYear()}</Footer>}
+        >
+          {children}
+        </Layout>
+      </body>
+    </html>
+  )
+}
+```
+
+## MDX Components
+
+```jsx
+// mdx-components.jsx (required at project root)
+import { useMDXComponents as getDocsMDXComponents } from 'nextra-theme-docs'
+
+const docsComponents = getDocsMDXComponents()
+
+export function useMDXComponents(components) {
+  return { ...docsComponents, ...components }
+}
+```
+
+## No `theme.config` Files
+
+`theme.config` is removed. Pass all options as props to `<Layout>`, `<Navbar>`, `<Footer>`, `<Banner>`, and `<Search>` in `app/layout.jsx`.
+
+## Search (Pagefind)
+
+FlexSearch is replaced by Pagefind (Rust-powered).
+
+```json
+// package.json
+"scripts": {
+  "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind"
+}
+```
+
+Add `_pagefind/` to `.gitignore`.
+
+## Metadata / Front Matter
+
+Use Next.js Metadata API. Front matter is exported as `metadata` automatically.
+
+```mdx
+---
+title: My Page
+description: Page description
+---
+```
+
+Do NOT mix front matter and `export const metadata` in the same file.
+
+## Renamed / Moved APIs
+
+| Old (v3) | New (v4) |
+|---|---|
+| `<RemoteContent>` from `nextra/components` | `<MDXRemote>` from `nextra/mdx-remote` |
+| `useRouter` from `nextra/hooks` | `useRouter` from `next/navigation` |
+| `<Th>`, `<Tr>`, `<Td>` | `<Table.Th>`, `<Table.Tr>`, `<Table.Td>` |
+| `compileMdx` returns `{ result }` | Returns `Promise<string>` directly |
+
+## `_meta` Files
+
+- Must be server components (no `'use client'`)
+- Use `_meta.global.js` to define all pages in one file (cannot mix with per-folder `_meta`)
+- External links auto-open in new tab with `↗` icon
+
+### Hidden Pages
+
+To make a page accessible via its URL but hidden from the sidebar, use `display: 'hidden'` in `_meta.js`:
+
+```javascript
+export default {
+  agent_workspace: 'Agent Workspace',
+  twilio_webchat: {
+    display: 'hidden',
+    title: 'Twilio Flex WebChat',
+  },
+}
+```
+
+This is the Nextra equivalent of Hugo's `[_build] list = 'never'` / `noindex = true`.
+
+### Folder Index Pages (`asIndexPage`)
+
+When a folder has an `index.mdx` that serves as its landing page, use `asIndexPage: true` in the front matter. This makes the folder clickable in the sidebar without creating a duplicate child entry.
+
+**Never** add `index` as a key in the folder's `_meta.js` — that causes the index page to appear twice.
+
+```mdx
+❌ _meta.js has: index: 'Browser Agent SDK'
+   → "Browser Agent SDK" appears as folder label AND as first child item
+
+✅ index.mdx front matter has: asIndexPage: true
+   → Folder is clickable; no duplicate child item
+```
+
+```mdx
+---
+title: Browser Agent SDK
+description: ...
+asIndexPage: true
+---
+```
+
+```javascript
+// browseragent/_meta.js — omit `index` entirely
+export default {
+  reference: 'SDK Reference',
+}
+```
+
+## Cards Component
+
+`Cards` and `Cards.Card` are available from `nextra/components` and render a responsive CSS grid of clickable link cards.
+
+```mdx
+import { Cards } from 'nextra/components'
+
+<Cards num={2}>
+  <Cards.Card title="iOS SDK" href="https://example.com" arrow>
+    Core features for implementing event handling without a UI.
+  </Cards.Card>
+  <Cards.Card title="iOS Default UI SDK" href="https://example.com" arrow>
+    Out-of-the-box implementation with a default UI and sample app.
+  </Cards.Card>
+</Cards>
+```
+
+### `num` Prop — Always Set Explicitly
+
+| Use case | Recommended `num` |
+|---|---|
+| 2 cards or 2-column layout | `num={2}` |
+| 3 cards or 3-column layout | `num={3}` |
+| 4 cards (2×2 grid) | `num={2}` |
+
+```mdx
+❌ <Cards>              — default num={3}, cards too narrow for description text
+✅ <Cards num={2}>      — wider cards, description text has room to breathe
+```
+
+### External Links in Cards
+
+For cards linking to external URLs, pass `target` and `rel` as props:
+
+```mdx
+<Cards.Card
+  title="Android SDK"
+  href="https://gitlab.com/..."
+  target="_blank"
+  rel="noreferrer"
+  arrow
+>
+  Description text here.
+</Cards.Card>
+```
+
+Nextra's auto-`target="_blank"` behaviour does **not** apply inside `Cards.Card href` — set it manually.
+
+## Tailwind CSS 4 Prefix
+
+```css
+/* ❌ v3 */
+._text-primary-600 { ... }
+
+/* ✅ v4 */
+.x\:text-primary-600 { ... }
+```
+
+## `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+## Code Blocks
+
+Nextra uses Shiki for syntax highlighting at build time. Incorrect or missing language tags cause hydration mismatches.
+
+### Language Tags
+
+Always use the correct, lowercase Shiki language identifier. Never use uppercase aliases (e.g. `JS`).
+
+| Content | Correct tag | ❌ Wrong |
+|---|---|---|
+| JavaScript / TypeScript | `javascript` / `typescript` | `JS`, `TS` |
+| HTML markup | `html` | `javascript` for `<script>` blocks |
+| Java | `java` | |
+| Kotlin | `kotlin` | |
+| Swift | `swift` | |
+| JSON / config values | `json` | (empty / untagged) |
+
+### Global Defaults (next.config.ts)
+
+```typescript
+const withNextra = nextra({
+  defaultShowCopyCode: true,
+});
+```
+
+### Per-Block Attributes
+
+Add `showLineNumbers` to every code block. Add `filename="..."` when a clear file name exists.
+
+**Never** leave a code fence with no language tag — use `text` as a fallback.
+
+## Images
+
+### Static Image Optimization
+
+Use standard markdown image syntax:
+
+```mdx
+![Alt text describing the image](/filename.jpg)
+```
+
+- Store images in `public/` (e.g. `public/my-image.jpg` → `/my-image.jpg` in markdown)
+- Do **not** import `next/image` manually in MDX for local images
+
+### DocImage Component (Fallback)
+
+All markdown images are routed through `components/DocImage.tsx`, registered as the `img` override in `mdx-components.tsx`.
+
+```tsx
+// mdx-components.tsx
+import { DocImage } from './components/DocImage'
+
+export function useMDXComponents(components = {}) {
+  return { ...themeComponents, img: DocImage, ...components }
+}
+```
+
+### Avoid Raw `<img>` Tags
+
+Never use `<img>` directly in MDX. Always use markdown `![]()` syntax.
+
+### JSX Tag Parsing in Prose
+
+Wrap UI label strings that contain angle brackets in backticks:
+
+```mdx
+❌ drag the </> HTML web resource widget
+✅ drag the `</>` HTML web resource widget
+```
+
+### Avoid `<p>` Tag Nesting
+
+Never use raw `<p>` tags inside MDX content — causes hydration errors.
+
+```mdx
+❌  <p>Default - N/A</p>
+    <p>Options - on, api</p>
+
+✅  Default - N/A | Options - on, api
+```
+
+## Links
+
+### Internal Links
+
+Nextra auto-converts relative/absolute links to Next.js `<Link>` — no manual import needed.
+
+```mdx
+✅ [Configuration Reference](./attributes)
+✅ [Browser Agent](/sdk/browseragent)
+✅ [Properties](#properties-and-methods)
+```
+
+Never use raw `<a href="...">` for internal navigation — it bypasses Next.js routing and prefetching.
+
+### External Links
+
+Nextra auto-detects external URLs and renders `<a target="_blank" rel="noreferrer">` with `↗` icon.
+
+**Never** override the `a` component in `mdx-components.tsx` — doing so removes built-in styles, the `↗` icon, and auto-`target="_blank"`.
+
+### Broken Internal Links
+
+Verify every internal path resolves to an actual MDX file. If a target page doesn't exist, delink and keep as plain prose until the page is added.
+
+```mdx
+❌ [Visitor API](/webservices/visitor_agent/visitor/)   — page doesn't exist → broken route
+✅ Visitor API documentation                            — delinked until the page is added
+```
+
+## Migrating from Hugo
+
+### Front Matter Format
+
+Replace TOML `+++` delimiters with YAML `---` and drop Hugo-specific keys:
+
+```mdx
+❌ Hugo
++++
+title = "My Page"
+date = 2025-01-01
+draft = false
+weight = 10
+noindex = true
+[_build]
+  list = 'never'
+  render = 'always'
++++
+
+✅ Nextra
+---
+title: My Page
+description: "..."
+---
+```
+
+Keys to **remove entirely**: `date`, `draft`, `weight`, `noindex`, `[_build]`.
+`noindex` → use `display: 'hidden'` in `_meta.js` instead.
+
+### Hugo Shortcodes
+
+| Hugo shortcode | Nextra replacement |
+|---|---|
+| `{{%children ...%}}` | Nothing — child pages appear in sidebar automatically |
+| `{{< figure ... >}}` | Markdown `![]()` image syntax |
+| `{{< highlight ... >}}` | Fenced code block with language tag |
+
+### Hugo Image Parameters
+
+Strip Hugo image shortcode query params:
+
+```mdx
+❌ ![Alt](/images/screenshot.png?height=350px&classes=left)
+✅ ![Alt](/screenshot.png)
+```
+
+### File Naming
+
+```text
+❌ content/section/_index.md
+✅ content/section/index.mdx   (with asIndexPage: true in front matter)
+```
+
+All other `.md` files should become `.mdx`.
+
+## Heading Hierarchy
+
+Every page MUST have exactly one explicit H1 (`#`) heading. Nextra does **not** auto-generate an H1 from front matter.
+
+- H1 must be the first heading and appear only once
+- H1 text MUST match the front matter `title` value exactly
+- Headings must not skip levels
+
+```mdx
+---
+title: My Page
+description: Page description
+---
+
+import { Callout } from 'nextra/components'
+
+# My Page
+
+## Section
+
+### Subsection
+```
+
+```mdx
+## Section Without H1   ❌ missing explicit H1
+# Title
+### Skipped H2          ❌ skipped a level
+# Title
+# Second Title          ❌ duplicate H1
+```

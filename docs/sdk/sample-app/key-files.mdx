@@ -1,0 +1,231 @@
+---
+title: Key Files Walkthrough
+description: Annotated walkthrough of every Swift file in the Glance Default UI sample app, explaining what each file demonstrates and why it matters.
+---
+
+# Key Files Walkthrough
+
+All paths below are relative to `.examples/glance-sample-app/glance-sample-app/`.
+
+---
+
+## GlanceManager.swift
+
+**Pattern: Central API wrapper (recommended)**
+
+A singleton that wraps all `GlanceDefaultUI` and `Glance` (core) calls. View models call `GlanceManager.shared` instead of the SDK directly — this keeps SDK calls in one place and makes it easy to add logging, analytics, or swap implementations.
+
+**Key methods:** `setVisitorParams` (full signature with all integration flags), `setPresence`, `startSession(key:timeout:videoMode:)`, `endSession`, `startHostedSession`, `stopHostedSession`, `pause`, `togglePause`, `pausePresence`.
+
+```swift showLineNumbers filename="GlanceManager.swift"
+final class GlanceManager {
+    static let shared = GlanceManager()
+
+    func setVisitorParams(_ params: GlanceVisitorInitParams, timeout: Double?, ...) {
+        GlanceDefaultUI.setVisitorParams(params, timeout: timeout, ...)
+    }
+
+    func startSession(key: String?, timeout: GlanceTimeout?, videoMode: GlanceVideoMode) {
+        GlanceDefaultUI.start(key: key, timeout: timeout, videoMode: videoMode)
+    }
+}
+```
+
+**Demonstrates:** setup, start-session, enable-presence, end-session, hosted-session.
+
+---
+
+## TestAppViewModel.swift
+
+**Pattern: Full `GlanceUIDelegate` implementation**
+
+The most comprehensive file in the sample app. Implements all 30 `GlanceUIDelegate` methods plus `GlanceLoggerDelegate`.
+
+**Highlights:**
+- `init()` calls `GlanceDefaultUI.setDelegate(self)` — set the delegate early.
+- `startSession()` builds `GlanceVisitorInitParams` from UI state, calls `GlanceManager.shared.setVisitorParams(...)` with all flags and optional timeouts, then `startSession(...)`.
+- `onPresenceTapped()` calls `setPresence(true)` then `setVisitorParams` with a stable `visitorid`.
+- `onError(_ error:)` sets `errorCode`, `errorMessage`, and `showAlertDialog = true` — wires errors to the SwiftUI alert.
+- `presenceDidConnect/presenceDidDisconnect` update `isPresenceConnected`.
+
+**Demonstrates:** setup, start-session, start-session-with-video, enable-presence, errors-and-timeouts, GlanceLoggerDelegate.
+
+---
+
+## TestAppView.swift
+
+**Pattern: Camera permission + delegate assignment in `onAppear`**
+
+The SwiftUI view for the Advanced session screen. Tabs: **Advanced Session**, **Log**, **Hosted**.
+
+**Highlights:**
+- `onAppear` calls `Glance.maskKeyboard(true)`, optionally `Glance.setDrawViewHierarchy(true)`, and `viewModel.setDelegate()`.
+- Camera: checks `AVCaptureDevice.authorizationStatus`, calls `requestAccess(for: .video)` if `.notDetermined`, shows `showAlert = true` if denied.
+- `.alert(isPresented: $viewModel.showAlertDialog)` surfaces `onError` alerts.
+- Navigation links to `TestMaskingViewController`, `TestMaskingView`, `TestWebViewController`.
+
+**Demonstrates:** setup, start-session, start-session-with-video, enable-presence, content-masking, camera permission.
+
+---
+
+## SimpleSessionViewModel.swift
+
+**Pattern: Minimal visitor-initiated session**
+
+Path: `Screens/SimpleSessionView/SimpleSessionViewModel.swift`
+
+The simplest possible integration: `GlanceVisitorInitParams` with `groupid` only, `GlanceManager.shared.setVisitorParams(params)`, then `startSession(key: sessionKey, videoMode: VideoOff)`. No presence, no video, no timeouts.
+
+Use this as the baseline when troubleshooting — if this works, add features incrementally.
+
+**Demonstrates:** setup, start-session.
+
+---
+
+## SimpleSessionView.swift
+
+**Pattern: Minimal session UI**
+
+Path: `Screens/SimpleSessionView/SimpleSessionView.swift`
+
+SwiftUI form with Group ID and Session Key text fields and a **Start** button. Calls `viewModel.startSession()`.
+
+---
+
+## HostedViewModel.swift
+
+**Pattern: Hosted session with error handling**
+
+- `init()` calls `GlanceDefaultUI.setDelegate(self)`.
+- `toggleHostedSession(username:password:)` — if active, calls `stopHostedSession`; otherwise calls `startHostedSession`.
+- `hostedSessionDidStart(sessionKey:)` stores the key and sets `isHostedSessionActive = true`.
+- `hostedSessionDidEnd(errorMessage:)` checks `!errorMessage.isEmpty` to distinguish error from clean end. On error: sets `errorMessage` and `showAlertDialog = true`.
+
+**Demonstrates:** hosted-session, GlanceDefaultUI.setDelegate, hostedSessionDidStart, hostedSessionDidEnd.
+
+---
+
+## HostedView.swift
+
+**Pattern: Hosted session UI + localized error alert**
+
+- `onAppear` calls `viewModel.setDelegate()` — important for tab-based UIs where the view may appear/disappear.
+- Displays `viewModel.sessionKey` when set.
+- `.alert` uses `GlanceLocalizedStringsConstants.dialogErrorTitle`, `dialogErrorPrimaryButton`, `dialogErrorSecondaryButton` for localized button labels.
+
+**Demonstrates:** hosted-session, GlanceLocalizedStringsConstants, setDelegate in onAppear.
+
+---
+
+## TestMaskingViewController.swift
+
+**Pattern: UIView masking**
+
+UIKit view controller with a `UITextField`, `UILabel`, and `UIButton`. In `setupMasking()`:
+
+```swift showLineNumbers
+Glance.addMaskedView(textField, withLabel: "Masked text field")
+Glance.addMaskedView(label, withLabel: "Masked label")
+Glance.addMaskedView(button, withLabel: "Masked button")
+```
+
+**Demonstrates:** content-masking, Glance.addMaskedView.
+
+---
+
+## TestMaskingView.swift
+
+**Pattern: SwiftUI masking via view modifier**
+
+SwiftUI `TextField`, `Text`, and `Button` with `.addMaskedView(withLabel:)` modifiers from `GlanceSDK`.
+
+```swift showLineNumbers
+TextField("Account number", text: $accountNumber)
+    .addMaskedView(withLabel: "Account Number")
+```
+
+**Demonstrates:** content-masking, SwiftUI masking.
+
+---
+
+## TestWebViewController.swift
+
+**Pattern: WebView masking with `GlanceMaskContentController`**
+
+1. Creates `GlanceMaskContentController` with CSS selectors and labels.
+2. Sets it on `WKWebViewConfiguration.userContentController` before creating `WKWebView`.
+3. Calls `glanceMaskContentController.setWebView(maskingWebView)`.
+4. Manages `webView.isHidden` when the WebView is in a tab or off-screen.
+
+**Demonstrates:** content-masking, GlanceMaskContentController, WKWebView.
+
+---
+
+## LogView.swift
+
+**Pattern: SDK event logging and diagnostics**
+
+Path: `Screens/Log/LogView.swift`
+
+Displays SDK messages, delegate callbacks, and events collected by `TestAppViewModel`'s `GlanceUIDelegate` and `GlanceLoggerDelegate` implementations. Provides a share button using `Glance.logFilePath`.
+
+**Demonstrates:** GlanceUIDelegate, GlanceLoggerDelegate, logging.
+
+---
+
+## AppCoordinator.swift
+
+**Pattern: Coordinator navigation**
+
+Path: `Coordinator/AppCoordinator.swift`
+
+Manages all navigation: Landing → Home → Simple Session / Advanced (TestAppView with Hosted tab inside) / Guides. Shows how `setDelegate` and Glance screens fit into a coordinator-based architecture.
+
+**Demonstrates:** setup, navigation, content-masking (pushes masking view controllers).
+
+---
+
+## AppDelegate.swift / SceneDelegate.swift
+
+Standard app and scene lifecycle boilerplate. `SceneDelegate` calls `appCoordinator?.start()` to kick off navigation.
+
+---
+
+## create_xcframework.sh
+
+Path: `.examples/glance-sample-app/create_xcframework.sh`
+
+Shell script that archives `GlanceSDK` for Simulator and Device targets, then calls `xcodebuild -create-xcframework` to combine them. Use this pattern if you distribute the SDK as an XCFramework instead of via SPM.
+
+---
+
+## File tree
+
+```text showLineNumbers
+glance-sample-app/
+├── AppDelegate.swift
+├── SceneDelegate.swift
+├── GlanceManager.swift
+├── TestAppViewModel.swift
+├── TestAppView.swift
+├── TestMaskingViewController.swift
+├── TestMaskingView.swift
+├── TestWebViewController.swift
+├── HostedViewModel.swift
+├── HostedView.swift
+├── TestViews/
+│   └── MaskingTestView.swift
+├── Coordinator/
+│   └── AppCoordinator.swift
+└── Screens/
+    ├── HomeView/
+    │   ├── GlanceHomeView.swift
+    │   └── GlanceHomeViewModel.swift
+    ├── LandingScreen/
+    │   └── GlanceLandingScreenView.swift
+    ├── Log/
+    │   └── LogView.swift
+    └── SimpleSessionView/
+        ├── SimpleSessionView.swift
+        └── SimpleSessionViewModel.swift
+```

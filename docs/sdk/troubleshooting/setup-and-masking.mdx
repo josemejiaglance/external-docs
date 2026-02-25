@@ -1,0 +1,183 @@
+---
+title: Setup, Masking & Localization
+description: Troubleshoot package installation failures, content masking not working, WebView visibility issues, and localization strings not applied.
+---
+
+import { Callout } from 'nextra/components'
+
+# Setup, Masking & Localization
+
+## Package resolution failed — `GlanceDefaultUI` not found
+
+**Symptoms:** Xcode reports "Package resolution failed". `GlanceSDK` or `GlanceDefaultUI` cannot be found.
+
+**Likely causes:**
+- Wrong repository URL.
+- Network or GitLab access issue.
+- Version tag does not exist.
+- Stale Xcode package cache.
+
+**Resolution:**
+
+Verify the exact SPM URL:
+
+```text showLineNumbers
+https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases
+```
+
+Then in Xcode: **File → Packages → Reset Package Caches** and try again. For local packages, ensure the path points to the cloned repository root.
+
+Do not hard-code version tags — check the GitLab releases page or your Glance admin for the current tag.
+
+---
+
+## Content masking not working — agent sees masked content
+
+**Symptoms:** `Glance.addMaskedView` is called but the agent still sees the content. `GlanceMaskContentController` has no effect.
+
+**Likely causes:**
+- View not in the window hierarchy when masking is applied.
+- Mask added after the session started but the view is not on screen.
+- WebView: `GlanceMaskContentController` set after `WKWebView` was created.
+- SwiftUI: wrong view being masked (underlying UIView must be masked, not a wrapper).
+- WebView in a tab: `isHidden` not updated when tab switches.
+
+**Resolution:**
+
+**UIView:** Call `addMaskedView` after the view is in the hierarchy:
+
+```swift showLineNumbers
+import GlanceCore
+
+override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    Glance.addMaskedView(accountTextField, withLabel: "Account Number")
+}
+```
+
+**SwiftUI:** Use `.addMaskedView(withLabel:)` modifier, or wrap in `UIHostingController` and mask the hosting controller's `view`:
+
+```swift showLineNumbers
+Glance.addMaskedView(hostingController.view, withLabel: "Sensitive Area")
+```
+
+**WebView:** Set `GlanceMaskContentController` on the configuration **before** creating the `WKWebView`, then call `setWebView`:
+
+```swift showLineNumbers
+let maskController = GlanceMaskContentController("#ssn, .account", labels: "SSN, Account")
+let config = WKWebViewConfiguration()
+config.userContentController = maskController
+let webView = WKWebView(frame: view.bounds, configuration: config)
+maskController.setWebView(webView)
+```
+
+---
+
+## WebView content visible to agent when tab is switched
+
+**Symptoms:** The agent sees WebView content from a tab the visitor is not currently viewing. Masking seems to "leak" across tab switches.
+
+**Likely causes:**
+- `WKWebView.isHidden` is `false` while the web view is off-screen (kept in memory in a tab).
+
+**Resolution:**
+
+Update `isHidden` whenever the WebView's visibility changes:
+
+```swift showLineNumbers
+// When the tab containing the WebView is hidden
+webView.isHidden = true
+
+// When the tab is shown again
+webView.isHidden = false
+```
+
+<Callout type="warning">
+WebView masking is active as long as `isHidden == false`. If the WebView is retained in memory (e.g. in a `UITabBarController`), its `isHidden` state controls whether the agent sees the masked regions in the screen share. Always keep `isHidden` in sync with actual visibility.
+</Callout>
+
+---
+
+## Keyboard visible to agent
+
+**Symptoms:** When the visitor types, the system keyboard is visible to the agent.
+
+**Resolution:**
+
+Call `Glance.maskKeyboard(true)` early in your session view's lifecycle:
+
+```swift showLineNumbers
+// SwiftUI
+.onAppear {
+    Glance.maskKeyboard(true)
+}
+
+// UIKit
+override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    Glance.maskKeyboard(true)
+}
+```
+
+The mask label text is controlled by `GlanceLocalizedStringsConstants.keyboardMaskLabel`.
+
+---
+
+## Localization strings not overriding
+
+**Symptoms:** Default English strings still appear in dialogs after adding `Localizable.strings`. Custom translations not applied.
+
+**Likely causes:**
+- `Localizable.strings` not added to the app target (only to the project).
+- Wrong key names (case-sensitive).
+- Wrong `.lproj` location.
+- Bundle cache not cleared.
+
+**Resolution:**
+
+Ensure `Localizable.strings` is a member of your **app target** (not just the project):
+
+1. In Xcode, select `Localizable.strings` in the file navigator.
+2. In the **File Inspector** (right panel), confirm your app target is checked under **Target Membership**.
+
+Key names are case-sensitive and must exactly match the values returned by `GlanceLocalizedStringsConstants` constants. For example:
+
+```text showLineNumbers filename="en.lproj/Localizable.strings"
+/* This key must match the constant value exactly */
+"GLANCE_DEFAULT_UI_START_DIALOG_TITLE" = "Start Support Session";
+```
+
+The module loads from the main bundle first — if the key is found there, the module's default is ignored.
+
+After making changes, do a clean build (**Product → Clean Build Folder**) to ensure the bundle cache is updated.
+
+---
+
+## Masking label text not customized
+
+**Symptoms:** Mask overlay shows default label text. Custom label from `GlanceLocalizedStringsConstants.keyboardMaskLabel` not applied.
+
+**Resolution:**
+
+The mask label text for SDK-managed masks (keyboard, background) is pulled from your `Localizable.strings`. Override the appropriate key:
+
+```text showLineNumbers filename="en.lproj/Localizable.strings"
+"GLANCE_KEYBOARD_MASK_LABEL" = "Keyboard hidden during session";
+"GLANCE_BACKGROUND_PAUSE_MASK_LABEL" = "Session paused";
+"GLANCE_BACKGROUND_SUSPEND_MASK_LABEL" = "App is in background";
+```
+
+For `Glance.addMaskedView`, the label is passed directly as a parameter and does not use `Localizable.strings`:
+
+```swift showLineNumbers
+Glance.addMaskedView(view, withLabel: "Your custom label here")
+```
+
+---
+
+## Related
+
+- [Installation guide](../getting-started/installation)
+- [Content Masking guide](../guides/content-masking)
+- [Localization guide](../guides/localization)
+- [GlanceLocalizedStringsConstants](../../api/localization-constants)

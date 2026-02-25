@@ -1,0 +1,121 @@
+---
+title: Installation
+description: Add GlanceDefaultUI to your iOS project via Swift Package Manager or XCFrameworks.
+---
+
+import { Callout, Tabs } from 'nextra/components'
+
+# Installation
+
+`GlanceDefaultUI` is distributed via Swift Package Manager (recommended) or as downloadable XCFrameworks. When using SPM, `GlanceSDK` is resolved and linked automatically.
+
+<Callout type="info">
+Always use the **latest published version**. Do not hard-code version strings — check the GitLab releases page or your Glance admin for the current version tag.
+</Callout>
+
+## Swift Package Manager
+
+### Option A — Xcode Package Dependencies UI
+
+1. Open your project in Xcode.
+2. Go to **File → Add Package Dependencies…**
+3. Enter the repository URL:
+   ```text showLineNumbers
+   https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases
+   ```
+4. Select the latest version (or a specific version tag).
+5. Add `GlanceDefaultUI` to your app target. `GlanceSDK` resolves automatically.
+
+### Option B — Package.swift
+
+Add the dependency to your `Package.swift`:
+
+```swift showLineNumbers filename="Package.swift"
+// swift-tools-version: 5.7
+import PackageDescription
+
+let package = Package(
+    name: "MyApp",
+    platforms: [.iOS(.v15)],
+    dependencies: [
+        .package(
+            name: "GlanceDefaultUI",
+            url: "https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases.git",
+            from: "<LATEST_VERSION>"
+        ),
+    ],
+    targets: [
+        .target(
+            name: "MyApp",
+            dependencies: ["GlanceDefaultUI"]
+        ),
+    ]
+)
+```
+
+Replace `<LATEST_VERSION>` with the current release tag from the [releases page](https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases).
+
+### Option C — Local clone / branch
+
+Clone or fork the repository and add it as a local package:
+
+```bash showLineNumbers
+git clone https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases.git
+```
+
+In Xcode: **File → Add Package Dependencies → Add Local…** and point to the cloned directory.
+
+Or in `Package.swift`:
+
+```swift showLineNumbers
+.package(path: "../glance-default-ui-ios-releases")
+```
+
+## XCFrameworks
+
+If SPM is not an option, download the pre-built XCFrameworks:
+
+1. Go to [https://gitlab.com/glance-sdk-public/glance-framework-ios](https://gitlab.com/glance-sdk-public/glance-framework-ios) and download the release `.zip`.
+2. Drag both `.xcframework` bundles into your Xcode project.
+3. Under **Target → General → Frameworks, Libraries, and Embedded Content**, set each framework to **Embed & Sign**.
+
+```swift showLineNumbers
+// Use conditional imports if you ship both SPM and XCFramework builds
+#if canImport(GlanceFramework)
+import GlanceFramework
+#else
+import GlanceDefaultUI
+import GlanceCore
+#endif
+```
+
+## Permissions
+
+Add entries to `Info.plist` **only if your app uses video**. Do not add camera or microphone entries for screen-share-only integrations.
+
+```xml showLineNumbers filename="Info.plist"
+<!-- Required only when using video -->
+<key>NSCameraUsageDescription</key>
+<string>Glance uses the camera to share video with the support agent.</string>
+
+<!-- Optional: add only when two-way audio is used -->
+<key>NSMicrophoneUsageDescription</key>
+<string>Glance uses the microphone during video sessions.</string>
+```
+
+## Verify the installation
+
+After adding the package, import the module and confirm it resolves without errors:
+
+```swift showLineNumbers
+import GlanceDefaultUI
+import GlanceCore
+```
+
+<Callout type="warning">
+If Xcode reports **"Package resolution failed"**, go to **File → Packages → Reset Package Caches** and try again. Confirm the URL is exactly `https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases`.
+</Callout>
+
+## Next steps
+
+- [Initial Setup](./setup) — set visitor params and assign a delegate

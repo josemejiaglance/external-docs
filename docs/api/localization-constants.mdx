@@ -1,0 +1,193 @@
+---
+title: Localization Constants
+description: Full reference for all 65 GlanceLocalizedStringsConstants string keys used in Default UI dialogs, labels, and buttons.
+---
+
+# Localization Constants
+
+`GlanceLocalizedStringsConstants` is a struct of `static let` string constants. Each constant holds the key used to look up localized text in `Localizable.strings`. Override any key in your app bundle to customize the displayed string.
+
+```swift showLineNumbers
+import GlanceDefaultUI
+
+// Access a constant
+let titleKey = GlanceLocalizedStringsConstants.defaultUIStartDialogTitle
+```
+
+See [Localization guide](../sdk/guides/localization) for how to override strings and add new languages.
+
+---
+
+## Start dialog
+
+Used in the App Share consent dialog shown when `start()` is called.
+
+| Constant | Usage |
+|---|---|
+| `defaultUIStartDialogTitle` | Dialog title (screen share only) |
+| `defaultUIStartDialogSubtitle` | Dialog subtitle |
+| `defaultUIStartDialogTitleAgent` | Title variant shown when agent is on the line |
+| `defaultUIStartDialogPhoneText` | Phone icon label |
+| `defaultUIStartDialogHeadsetText` | Headset icon label |
+| `defaultUIStartDialogDrawText` | Draw icon label |
+| `defaultUIStartDialogVideoText` | Video icon label |
+| `defaultUIStartDialogCancelButtonTitle` | Cancel button title |
+| `defaultUIStartDialogAcceptButtonTitle` | Accept button title |
+| `defaultUIStartDialogTermsText` | Terms link text in dialog |
+
+---
+
+## Session start sheet
+
+Used in the newer bottom-sheet dialog style for session consent.
+
+| Constant | Usage |
+|---|---|
+| `sessionStartDialogHeaderTextAppShare` | Header — app share |
+| `sessionStartDialogHeaderTextAppShareAndVideo` | Header — app share + video |
+| `sessionStartDialogHeaderTextInQueue` | Header — in queue (waiting) |
+| `sessionStartDialogHeaderTextInQueueCode` | Header — in queue with code |
+| `sessionStartDialogHeaderTextInSessionAddVideo` | Header — add video mid-session |
+| `sessionStartDialogHeaderTextEndSession` | Header — end session confirmation |
+| `sessionStartDialogDescriptionTextAppShare` | Description — app share |
+| `sessionStartDialogDescriptionTextAppShareAndVideo` | Description — app share + video |
+| `sessionStartDialogDescriptionTextInSessionAddVideo` | Description — add video mid-session |
+| `sessionStartDialogAcceptButtonText` | Accept/Start button |
+| `sessionStartDialogDeclineButtonText` | Decline button |
+| `sessionStartDialogYesButtonText` | Yes button (confirmation dialogs) |
+| `sessionStartDialogNoButtonText` | No button |
+| `sessionStartDialogTermsLinkText` | Terms link text |
+
+---
+
+## Video start dialog
+
+Used in the App Share + Video consent dialog when a video mode is set.
+
+| Constant | Usage |
+|---|---|
+| `videoDefaultUIStartDialogText` | Dialog body text |
+| `videoDefaultUIStartDialogCancelButtonTitle` | Cancel button |
+| `videoDefaultUIStartDialogAcceptButtonTitle` | Accept button |
+| `videoDefaultUIStartDialogTermsText` | Terms link text |
+| `videoDefaultUIInQueueText` | In-queue body text for video sessions |
+
+---
+
+## Presence dialogs
+
+Used in the Default UI Presence (1-Click Connect) dialog shown when an agent requests a session.
+
+| Constant | Usage |
+|---|---|
+| `defaultUIPresenceDialogTitle` | Dialog title |
+| `defaultUIPresenceDialogText` | Dialog body text (screen share) |
+| `defaultUIPresenceDialogNoButtonTitle` | Decline button |
+| `defaultUIPresenceDialogYesButtonTitle` | Accept button |
+| `defaultUIPresenceDialogTermsText` | Terms link text |
+| `defaultUIPresenceDialogTextVideo` | Dialog body text (video) |
+
+Used in the non-default-UI Presence flow:
+
+| Constant | Usage |
+|---|---|
+| `nonDefaultUIPresenceDialogTitle` | Dialog title |
+| `nonDefaultUIPresenceDialogNoButtonTitle` | Decline button |
+| `nonDefaultUIPresenceDialogYesButtonTitle` | Accept button |
+| `nonDefaultUIPresenceDialogShowTermsButtonTitle` | Show terms button |
+
+---
+
+## Queue and waiting
+
+| Constant | Usage |
+|---|---|
+| `defaultUIAgentCodeText` | "Share this code with your agent:" label |
+| `defaultUIInQueueText` | Body text while waiting in queue |
+| `defaultUICancelText` | Cancel button label |
+| `waitingDialogTitle` | Waiting dialog title |
+
+---
+
+## End session dialog
+
+| Constant | Usage |
+|---|---|
+| `defaultUIVisitorEndDialogTitle` | End-session confirmation title |
+| `defaultUIVisitorEndDialogMessage` | Confirmation body message |
+| `defaultUIVisitorEndDialogEndButton` | "End Session" button |
+| `defaultUIVisitorEndDialogCancelButton` | "Keep Session" / Cancel button |
+
+---
+
+## Hosted session
+
+| Constant | Usage |
+|---|---|
+| `dialogHostedSessionKeyTitle` | "Your session key:" label in hosted key dialog |
+
+---
+
+## Error dialog
+
+| Constant | Usage |
+|---|---|
+| `dialogErrorTitle` | Error dialog title |
+| `dialogErrorPrimaryButton` | Primary action button (e.g. "Retry") |
+| `dialogErrorSecondaryButton` | Secondary button (e.g. "Dismiss") |
+
+```swift showLineNumbers
+// Example usage in a hosted session error alert
+Alert(
+    title: Text(GlanceLocalizedStringsConstants.dialogErrorTitle),
+    message: Text(viewModel.errorMessage),
+    primaryButton: .default(
+        Text(GlanceLocalizedStringsConstants.dialogErrorPrimaryButton)
+    ),
+    secondaryButton: .cancel(
+        Text(GlanceLocalizedStringsConstants.dialogErrorSecondaryButton)
+    )
+)
+```
+
+---
+
+## Camera permission
+
+| Constant | Usage |
+|---|---|
+| `cameraAlertTitle` | Camera permission alert title |
+| `cameraPermission` | Alert message explaining why camera is needed |
+| `goToSettings` | "Go to Settings" button label |
+
+---
+
+## Mask labels
+
+| Constant | Usage |
+|---|---|
+| `keyboardMaskLabel` | Label shown over the keyboard mask |
+| `backgroundSuspendMaskLabel` | Label shown when app is suspended in background |
+| `backgroundPauseMaskLabel` | Label shown when app is paused in background |
+
+---
+
+## Misc
+
+| Constant | Usage |
+|---|---|
+| `logoViewTitle` | Glance logo view title |
+| `shareAppDialogTitle` | Share app dialog title (screen share) |
+| `shareAppDialogVideoTitle` | Share app dialog title (video) |
+| `shareAppDialogSubtitle` | Share app dialog subtitle |
+| `shareAppDialogVideoSubtitle` | Share app dialog subtitle (video) |
+| `shareAppDialogPrimaryButton` | Primary button |
+| `shareAppDialogSecondaryButton` | Secondary button |
+| `shareAppDialogURL` | Default terms and conditions URL |
+
+---
+
+## Related
+
+- [Localization guide](../sdk/guides/localization) — how to override strings
+- [GlanceService](./types#glanceservice) — customizing the terms URL

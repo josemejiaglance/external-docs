@@ -1,0 +1,43 @@
+---
+title: Getting Started
+description: Add GlanceDefaultUI to your iOS app and run your first cobrowse session in minutes.
+asIndexPage: true
+---
+
+import { Cards, Steps } from 'nextra/components'
+
+# Getting Started
+
+Integrate the Glance Default UI SDK into an existing iOS app in two steps: **install the package** and **configure initial settings**.
+
+<Steps>
+### Install the SDK
+
+Add `GlanceDefaultUI` via Swift Package Manager or embed XCFrameworks directly. `GlanceSDK` is pulled in automatically when using SPM.
+
+[Installation →](./installation)
+
+### Configure the SDK
+
+Set visitor params and assign a delegate before starting any session.
+
+[Initial Setup →](./setup)
+</Steps>
+
+## Prerequisites
+
+- iOS 15 or later
+- Swift 5.7 toolchain (`swift-tools-version: 5.7`)
+- A valid Glance group ID (from your Glance admin portal)
+- Network access to Glance services
+
+## Next steps
+
+<Cards num={2}>
+  <Cards.Card title="Start a Session" href="../guides/start-session" arrow>
+    Visitor-initiated cobrowse session with a 4-digit session key.
+  </Cards.Card>
+  <Cards.Card title="API Reference" href="../../api" arrow>
+    Full method signatures, parameters, and delegate protocol.
+  </Cards.Card>
+</Cards>

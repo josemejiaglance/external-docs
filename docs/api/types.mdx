@@ -1,0 +1,208 @@
+---
+title: Types & Enums
+description: Reference for all parameter types used by GlanceDefaultUI — GlanceVisitorInitParams, GlanceVideoMode, GlanceTimeout, GlanceError, GlanceSDKEventCode, GlanceVisibility, GlanceLocation, and GlanceService.
+---
+
+import { Callout } from 'nextra/components'
+
+# Types & Enums
+
+These types are used as parameters and return values across the `GlanceDefaultUI` API and `GlanceUIDelegate` protocol. Most are defined in `GlanceCore` or `GlanceSDK`.
+
+```swift showLineNumbers
+import GlanceCore      // GlanceVideoMode, GlanceTimeout, GlanceError, GlanceSDKEventCode
+import GlanceDefaultUI // GlanceDefaultUI.SettingsInterval (v7.1 only)
+```
+
+---
+
+## GlanceVisitorInitParams
+
+A configuration object for visitor-specific session parameters.
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.visitorid = "crm-user-abc"
+params.video = false
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `groupid` | `Int` | Yes | Your Glance group ID from the admin portal. Cannot be changed without relaunching. |
+| `visitorid` | `String?` | For Presence | Stable unique identifier for this visitor. Required for 1-Click Connect. |
+| `video` | `Bool` | No | `true` to enable video sessions. Default: `false`. |
+
+---
+
+## GlanceVideoMode
+
+Enum controlling whether and how video is displayed during a session. Import `GlanceCore`.
+
+<Callout type="warning">
+Reference cases **without** a leading dot: `videoMode: VideoOff`, `videoMode: VideoSmallVisitor`. Do not use `.VideoOff` or `.videoOff`.
+</Callout>
+
+| Case | Description |
+|---|---|
+| `VideoOff` | Screen share only. No video stream. |
+| `VideoSmallVisitor` | Visitor camera shown in a small overlay. |
+| `VideoLargeVisitor` | Visitor camera shown in a large view. |
+| `VideoSmallMultiway` | Two-way video — both visitor and agent cameras, small format. |
+| `VideoLargeMultiway` | Two-way video — both visitor and agent cameras, large format. |
+
+```swift showLineNumbers
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoLargeMultiway)
+```
+
+---
+
+## GlanceTimeout
+
+A configurable timeout value for `GlanceDefaultUI.start(key:timeout:videoMode:)`. Not an enum — construct it with an initializer.
+
+```swift showLineNumbers
+let timeout = GlanceTimeout(timeInSeconds: 60, type: .default)
+GlanceDefaultUI.start(key: nil, timeout: timeout, videoMode: VideoOff)
+```
+
+| Initializer parameter | Type | Description |
+|---|---|---|
+| `timeInSeconds` | `Double` | Duration before `startTimeoutExpired()` fires. |
+| `type` | `GlanceTimeout.TimeoutType` | `.default` for standard timeout, `.network` for network-related timeout. |
+
+---
+
+## GlanceError
+
+A struct passed to `GlanceUIDelegate.onError(_:)` when any SDK error occurs.
+
+| Property | Type | v7.1 | v7.2 | Description |
+|---|---|---|---|---|
+| `code` | `EventCode` / `GlanceSDKEventCode` | `EventCode` | `GlanceSDKEventCode` | Typed error/event code. |
+| `message` | `String` | — | — | Human-readable error description. |
+
+```swift showLineNumbers
+func onError(_ error: GlanceError) {
+    print("Error code: \(error.code), message: \(error.message)")
+}
+```
+
+---
+
+## GlanceSDKEventCode
+
+Enum for error and event codes used in `GlanceError.code` (v7.2). In v7.1, the equivalent type is `EventCode` with the same case names.
+
+| Case | Description |
+|---|---|
+| `EventNone` | No error. |
+| `EventInvalidParameter` | A required parameter is missing or invalid. |
+| `EventInvalidState` | Method called in wrong order or state. |
+| `EventStartSessionFailed` | Session failed to start. |
+| `EventJoinFailed` | Agent could not join the session. |
+| `EventSessionEnded` | Session ended (informational). |
+| `EventLoginFailed` | Authentication failed (hosted sessions). |
+| `EventPresenceConnected` | Presence connected (informational). |
+| `EventPresenceConnectFail` | Presence connection failed. |
+| `EventPresenceShowTerms` | Agent requested a session via Presence. |
+| `EventPresenceDisconnected` | Presence disconnected. |
+| `EventPresenceNotConfigured` | Presence not enabled for this group. |
+| `EventVisitorInitialized` | Visitor initialization completed. |
+| `EventConnectionWarning` | Network quality degraded during session. |
+| `EventClearWarning` | Network quality restored. |
+| `EventGuestCountChange` | Number of agents in session changed. |
+| `EventException` | Internal SDK exception. |
+
+```swift showLineNumbers
+func onError(_ error: GlanceError) {
+    switch error.code {
+    case .EventStartSessionFailed:
+        showAlert("Could not start session. Check your group ID and network.")
+    case .EventPresenceConnectFail:
+        showAlert("Presence connection failed.")
+    case .EventLoginFailed:
+        showAlert("Login failed: \(error.message)")
+    default:
+        showAlert(error.message)
+    }
+}
+```
+
+---
+
+## GlanceVisibility
+
+Enum for widget visibility state, delivered in `GlanceUIDelegate.onUpdateVisibility(to:)`.
+
+| Case | Description |
+|---|---|
+| `.tab` | Widget is in tab/minimized state. |
+| `.full` | Widget is in full/expanded state. |
+
+```swift showLineNumbers
+func onUpdateVisibility(to visibility: GlanceVisibility) {
+    switch visibility {
+    case .tab: print("Widget minimized")
+    case .full: print("Widget expanded")
+    }
+}
+```
+
+---
+
+## GlanceLocation
+
+Enum for the widget's corner position, delivered in `GlanceUIDelegate.onUpdateLocation(to:)`.
+
+| Case | Description |
+|---|---|
+| `.topLeft` | Widget anchored to top-left corner. |
+| `.topRight` | Widget anchored to top-right corner. |
+| `.bottomLeft` | Widget anchored to bottom-left corner. |
+| `.bottomRight` | Widget anchored to bottom-right corner. |
+
+---
+
+## GlanceDefaultUI.SettingsInterval (v7.1 only)
+
+Enum for the `fetchSettingsInterval` parameter in `setVisitorParams` — **v7.1 only**. In v7.2 this parameter is removed.
+
+<Callout>
+Always qualify as `GlanceDefaultUI.SettingsInterval`, not `SettingsInterval` alone or `Glance.SettingsInterval` — both will cause compile errors.
+</Callout>
+
+| Case | Description |
+|---|---|
+| `.never` | Remote settings are never fetched. |
+| `.always` | Remote settings are fetched on every init. |
+| `.repeating(Int)` | Remote settings are fetched every N seconds. |
+
+```swift showLineNumbers
+// v7.1 only
+GlanceDefaultUI.setVisitorParams(
+    params,
+    fetchSettingsInterval: GlanceDefaultUI.SettingsInterval.repeating(3600)
+)
+```
+
+---
+
+## GlanceService
+
+An optional class for customizing dialog behavior, specifically the terms and conditions URL shown in consent dialogs.
+
+```swift showLineNumbers
+var termsUrl: String
+```
+
+Default UI internally uses `GlanceLocalizedStringsConstants.shareAppDialogURL` as the terms URL. To provide a custom URL, supply a `GlanceService` instance when constructing a custom `DialogsCoordinator`.
+
+---
+
+## Related
+
+- [GlanceDefaultUI methods](./glance-default-ui)
+- [GlanceUIDelegate](./glance-ui-delegate)
+- [Localization Constants](./localization-constants)

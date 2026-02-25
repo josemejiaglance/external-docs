@@ -1,0 +1,199 @@
+---
+title: Video Sessions
+description: Add one-way or two-way video to a Glance cobrowse session. Covers camera permission, video modes, and all video-related delegate callbacks.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Video Sessions
+
+Video sessions combine screen share with live camera video. The visitor can show their face, environment, or a physical document to the agent. Two-way video also lets the visitor see the agent.
+
+## Prerequisites
+
+- [Initial Setup](../getting-started/setup) completed.
+- `NSCameraUsageDescription` added to `Info.plist`.
+- Camera permission requested before starting the session.
+
+## Video modes
+
+| Mode | Description |
+|---|---|
+| `VideoOff` | Screen share only. No video. |
+| `VideoSmallVisitor` | Visitor camera shown in a small overlay. |
+| `VideoLargeVisitor` | Visitor camera shown in a large view. |
+| `VideoSmallMultiway` | Two-way video: both visitor and agent cameras, small. |
+| `VideoLargeMultiway` | Two-way video: both visitor and agent cameras, large. |
+
+<Callout type="warning">
+Reference video modes by their exact case name without a leading dot: `videoMode: VideoSmallVisitor`. Import `GlanceCore` for the `GlanceVideoMode` type. Do **not** use `.videoSmallVisitor` or `.VideoSmallVisitor`.
+</Callout>
+
+## Implementation
+
+<Steps>
+
+### Add `Info.plist` permissions
+
+Add the following keys to your `Info.plist`. Only add what your app uses.
+
+```xml showLineNumbers filename="Info.plist"
+<key>NSCameraUsageDescription</key>
+<string>Glance uses the camera to share video with your support agent.</string>
+
+<!-- Only if two-way audio is required -->
+<key>NSMicrophoneUsageDescription</key>
+<string>Glance uses the microphone during video sessions.</string>
+```
+
+### Enable video in `GlanceVisitorInitParams`
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.video = true   // ← enables video capability
+```
+
+### Request camera permission
+
+Request access **before** calling `start()`. If the user denies, show an in-app alert directing them to Settings.
+
+```swift showLineNumbers filename="TestAppView.swift"
+import AVFoundation
+
+func requestCameraPermissionIfNeeded() {
+    let status = AVCaptureDevice.authorizationStatus(for: .video)
+    switch status {
+    case .authorized:
+        break
+    case .notDetermined:
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            if !granted {
+                DispatchQueue.main.async { self.showCameraAlert = true }
+            }
+        }
+    default:
+        showCameraAlert = true
+    }
+}
+```
+
+```swift showLineNumbers
+// Show an alert with a link to Settings when access is denied
+.alert("Camera Access Required", isPresented: $showCameraAlert) {
+    Button("Go to Settings") {
+        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+    }
+    Button("Cancel", role: .cancel) {}
+}
+```
+
+### Start the session with a video mode
+
+```swift showLineNumbers
+GlanceDefaultUI.setVisitorParams(params)
+
+// One-way: only visitor camera shown to agent
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoSmallVisitor)
+
+// Two-way: both cameras visible
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoLargeMultiway)
+```
+
+The Default UI shows an **App Share + Video** dialog with a camera preview and consent text before the session key is obtained.
+
+### Implement video delegate callbacks
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+extension MySessionViewModel: GlanceUIDelegate {
+
+    // Camera preview starts (dialog phase, before session key)
+    func didStartPreviewVideoCapture(_ captureSession: AVCaptureSession) {}
+
+    // Camera preview stops (dialog dismissed)
+    func didStopPreviewVideoCapture(_ captureSession: AVCaptureSession) {}
+
+    // In-session visitor video capture starts
+    func didStartVideoCapture(_ captureSession: AVCaptureSession) {
+        print("Visitor video started")
+    }
+
+    // In-session visitor video capture stops
+    func didStopVideoCapture(_ captureSession: AVCaptureSession) {
+        print("Visitor video stopped")
+    }
+
+    // Visitor manually paused their video
+    func didPauseVisitorVideo() {}
+
+    // Agent video/cursor view is ready (two-way video)
+    func didStartAgentViewer(_ glanceAgentViewer: UIView) {
+        // Default UI positions this view automatically
+    }
+
+    // Agent video/cursor view was removed
+    func didStopAgentViewer() {}
+
+    // Agent video state changed
+    func onUpdateAgentVideo() {}
+
+    // A new video frame from the visitor's camera
+    func receivedVideoCaptureImage(_ image: UIImage) {}
+
+    // Agent has requested to start video mid-session
+    func agentAskedForVideoSession() {
+        // Default UI shows the Share Video dialog automatically
+    }
+
+    // SDK needs explicit confirmation before starting video
+    func askForVideoSession(confirmAction: @escaping (() -> Void), cancelAction: (() -> Void)?) {
+        // Call confirmAction() to proceed, cancelAction() to decline
+        confirmAction()
+    }
+
+    // Widget UI updates
+    func onUpdateVisibility(to visibility: GlanceVisibility) {}
+    func onUpdateLocation(to location: GlanceLocation) {}
+    func onUpdateSize(size: String) {}
+}
+```
+
+</Steps>
+
+## Agent-requested video mid-session
+
+If the agent requests video during an active session, the Default UI shows a **Share Video** dialog. Your delegate also receives `agentAskedForVideoSession()` and `askForVideoSession(confirmAction:cancelAction:)`.
+
+```swift showLineNumbers
+func askForVideoSession(
+    confirmAction: @escaping (() -> Void),
+    cancelAction: (() -> Void)?
+) {
+    // Present your own confirmation UI, then:
+    confirmAction()   // to start video
+    // cancelAction?() // to decline
+}
+```
+
+## Delegate call sequence for video sessions
+
+| When | Callback |
+|---|---|
+| Camera preview starts (dialog) | `didStartPreviewVideoCapture(_:)` |
+| Camera preview stops (dialog dismissed) | `didStopPreviewVideoCapture(_:)` |
+| In-session visitor video starts | `didStartVideoCapture(_:)` |
+| In-session visitor video stops | `didStopVideoCapture(_:)` |
+| Visitor pauses video | `didPauseVisitorVideo()` |
+| Agent viewer (two-way) appears | `didStartAgentViewer(_:)` |
+| Agent viewer removed | `didStopAgentViewer()` |
+| Agent requests video mid-session | `agentAskedForVideoSession()` |
+| SDK needs video confirmation | `askForVideoSession(confirmAction:cancelAction:)` |
+| Agent video state updated | `onUpdateAgentVideo()` |
+| Visitor video frame available | `receivedVideoCaptureImage(_:)` |
+
+All standard session callbacks (`sessionConnected`, `receivedSessionCode`, `sessionAgentConnected`, `sessionEnded`, `onError`) also fire — see [Start a Session](./start-session#delegate-call-sequence).
+
+## Next steps
+
+- [Content Masking](./content-masking) — hide sensitive UI from the video/screen share
+- [Troubleshooting: Video](../troubleshooting/video-and-presence)

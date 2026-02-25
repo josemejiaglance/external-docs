@@ -1,0 +1,36 @@
+---
+title: Guides
+description: Step-by-step implementation guides for all Glance Default UI session types and features.
+asIndexPage: true
+---
+
+import { Cards } from 'nextra/components'
+
+# Guides
+
+Each guide covers a specific capability end-to-end: the steps to implement it, the delegate callbacks you'll receive, and code examples drawn from the sample app.
+
+<Cards num={2}>
+  <Cards.Card title="Start a Session" href="./start-session" arrow>
+    Visitor-initiated cobrowse with a 4-digit session key. The foundation of all session types.
+  </Cards.Card>
+  <Cards.Card title="Video Sessions" href="./video-session" arrow>
+    One-way and two-way video alongside screen share. Includes camera permission setup.
+  </Cards.Card>
+  <Cards.Card title="Presence (1-Click Connect)" href="./presence" arrow>
+    Let agents initiate sessions to a known visitor without the visitor generating a key first.
+  </Cards.Card>
+  <Cards.Card title="Hosted Sessions" href="./hosted-session" arrow>
+    Agent-authenticated sessions where a guest visitor joins without a group ID.
+  </Cards.Card>
+  <Cards.Card title="Content Masking" href="./content-masking" arrow>
+    Hide sensitive UIViews, SwiftUI views, and WebView content from the agent during screen share.
+  </Cards.Card>
+  <Cards.Card title="Localization" href="./localization" arrow>
+    Override or translate Default UI dialog strings for any language.
+  </Cards.Card>
+</Cards>
+
+## Prerequisites
+
+All guides assume you have completed [Installation](../getting-started/installation) and [Initial Setup](../getting-started/setup).

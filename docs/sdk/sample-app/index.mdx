@@ -1,0 +1,56 @@
+---
+title: Sample App
+description: The Glance Default UI sample app is the canonical integration reference. It demonstrates every feature with production-quality patterns.
+asIndexPage: true
+---
+
+import { Cards, Callout } from 'nextra/components'
+
+# Sample App
+
+The sample app (`glance-sample-app`) is the authoritative reference for integrating `GlanceDefaultUI`. Every integration pattern in this documentation is drawn from it.
+
+**Repository path:** `.examples/glance-sample-app/glance-sample-app/`
+
+<Callout type="info">
+The sample app is part of the `glance-default-ui-ios-releases` repository. Clone the repo to access the full source.
+</Callout>
+
+## App structure
+
+The app has three main screens, each demonstrating a different integration depth:
+
+| Screen | Description |
+|---|---|
+| **Simple Session** | Minimal visitor-initiated session — group ID and session key fields only. |
+| **Advanced (TestAppView)** | Full-featured: presence, video, timeouts, render mode, content masking, logging. |
+| **Hosted** | Agent-authenticated hosted session with error handling. |
+
+Navigation is managed by `AppCoordinator.swift`.
+
+## Feature coverage
+
+| Feature | Demonstrated by |
+|---|---|
+| SDK setup & setVisitorParams | `GlanceManager`, `TestAppViewModel`, `SimpleSessionViewModel` |
+| Visitor-initiated session | `SimpleSessionViewModel`, `TestAppViewModel` |
+| Video session | `TestAppViewModel`, `TestAppView` |
+| Presence (1-Click Connect) | `TestAppViewModel` (`onPresenceTapped`) |
+| Hosted session | `HostedViewModel`, `HostedView` |
+| Error handling / alerts | `TestAppViewModel` (`onError`), `HostedViewModel` (`hostedSessionDidEnd`) |
+| Content masking (UIView) | `TestMaskingViewController` |
+| Content masking (SwiftUI) | `TestMaskingView` |
+| Content masking (WebView) | `TestWebViewController` |
+| Localization | `HostedView` (uses `GlanceLocalizedStringsConstants`) |
+| Logging / diagnostics | `LogView`, `TestAppViewModel` (`GlanceLoggerDelegate`) |
+| Camera permission | `TestAppView` (`onAppear`) |
+| Navigation structure | `AppCoordinator` |
+
+<Cards num={2}>
+  <Cards.Card title="Key Files Walkthrough" href="./key-files" arrow>
+    Annotated description of every Swift file in the sample app.
+  </Cards.Card>
+  <Cards.Card title="Integration Guide" href="../getting-started" arrow>
+    Step-by-step setup based on the sample app patterns.
+  </Cards.Card>
+</Cards>

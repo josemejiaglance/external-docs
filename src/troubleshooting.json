@@ -1,0 +1,231 @@
+{
+  "troubleshooting": [
+    {
+      "id": "settings-interval-not-member",
+      "symptoms": ["'SettingsInterval' is not a member type of class 'GlanceSDK.Glance'", "Cannot find type 'SettingsInterval' in scope", "Compile error when using fetchSettingsInterval"],
+      "likely_causes": ["Using unqualified SettingsInterval or wrong module prefix; with Default UI the type must be GlanceDefaultUI.SettingsInterval", "Copying a snippet that omits the module prefix", "In 7.2: fetchSettingsInterval was removed from initVisitor and setVisitorParams"],
+      "resolution": "With Default UI use GlanceDefaultUI.SettingsInterval. Examples: fetchSettingsInterval: GlanceDefaultUI.SettingsInterval = .never, or .never / .always / .repeating(3600) as argument (type inferred). Do not use SettingsInterval alone or Glance.SettingsInterval.",
+      "version_notes": {
+        "7.1": "Use GlanceDefaultUI.SettingsInterval for setVisitorParams and GlanceCore.SettingsInterval for Glance.initVisitor. Do not use SettingsInterval alone or Glance.SettingsInterval.",
+        "7.2": "In 7.2, setVisitorParams and initVisitor no longer have fetchSettingsInterval. To enable remote settings when using Default UI, call Glance (Core) directly: Glance.enableSettings(isEnabled: true) for 1-hour refresh, or Glance.setSettingsAPIRefreshInterval(refreshInterval:) for a custom interval (e.g. GlanceRefreshInterval(intervalInHours: -1) to disable)."
+      },
+      "related_flows": ["setup"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams", "Glance.initVisitor", "Glance.enableSettings", "Glance.setSettingsAPIRefreshInterval"],
+      "related_errors": []
+    },
+    {
+      "id": "session-not-starting",
+      "symptoms": ["Session fails to start", "start() does nothing", "No session key shown", "App Share dialog never appears"],
+      "likely_causes": ["setVisitorParams not called before start()", "Invalid or zero groupid", "Missing or incorrect Glance account / group configuration", "Network unreachable"],
+      "resolution": "Call setVisitorParams with valid GlanceVisitorInitParams (groupid from Glance admin, non-zero) before start(). Ensure app has network permission and can reach Glance services. Check onError for EventStartSessionFailed or EventInvalidParameter. Sample app: GlanceManager.setVisitorParams then startSession; TestAppViewModel.startSession() builds params and calls GlanceManager.shared.setVisitorParams(...) then startSession(...).",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (startSession, startSessionRandomKey)",
+      "related_flows": ["setup", "start-session"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start"],
+      "related_errors": ["EventStartSessionFailed", "EventInvalidParameter", "EventInvalidState"]
+    },
+    {
+      "id": "delegate-not-called",
+      "symptoms": ["Delegate methods not invoked", "No session code received", "onError never called", "hostedSessionDidStart / hostedSessionDidEnd not called", "sessionConnected not called"],
+      "likely_causes": ["setDelegate not called", "Delegate set after start() or startHostedSession()", "Delegate instance deallocated (e.g. weak or local object)", "Wrong object set as delegate"],
+      "resolution": "Call GlanceDefaultUI.setDelegate(self) before starting a session or hosted session. Keep the delegate instance alive: use a view model or controller that is retained (e.g. owner holds strong reference). Set delegate in init() (e.g. TestAppViewModel) or in onAppear (e.g. HostedView, TestAppView) so it is set before the user taps Start. If using tabs, set delegate when the tab appears (HostedView.onAppear calls viewModel.setDelegate()).",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (init), HostedView.swift (onAppear), TestAppView.swift (onAppear setDelegate)",
+      "related_flows": ["setup", "start-session", "hosted-session"],
+      "related_apis": ["GlanceDefaultUI.setDelegate"],
+      "related_errors": []
+    },
+    {
+      "id": "presence-connect-fail",
+      "symptoms": ["Presence does not connect", "1-Click Connect not working", "presenceDidConnect never called", "EventPresenceConnectFail in onError"],
+      "likely_causes": ["Invalid or missing visitorid when using Presence", "Network or firewall blocking WebSocket", "setVisitorParams not called with same params after setPresence(true)", "Presence not configured for group", "visitorid empty or generic"],
+      "resolution": "Use a stable visitorid (e.g. from CRM) in GlanceVisitorInitParams. Call setPresence(true) and setVisitorParams with the same params (sample: TestAppViewModel.onPresenceTapped() calls setPresence then setVisitorParams with visitorid). Check network and that Presence is enabled for your Glance group. Implement onError and filter EventPresenceConnectFail; consider showing user-facing message. presenceTimeoutExpired() is called if connection times out.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (onPresenceTapped)",
+      "related_flows": ["enable-presence"],
+      "related_apis": ["GlanceDefaultUI.setPresence", "GlanceDefaultUI.setVisitorParams"],
+      "related_errors": ["EventPresenceConnectFail", "EventPresenceNotConfigured", "EventPresenceDisconnected"]
+    },
+    {
+      "id": "hosted-session-login-failed",
+      "symptoms": ["hostedSessionDidEnd called with non-empty errorMessage", "Agent cannot start hosted session from app", "Login failed when starting hosted session"],
+      "likely_causes": ["Invalid username or password", "Account not allowed to start hosted sessions", "Network or server error", "Wrong server URL if using custom server"],
+      "resolution": "Verify Glance credentials and that the account has permission to start hosted sessions. Always show errorMessage to the user when hostedSessionDidEnd(errorMessage:) is called with non-empty errorMessage (sample: HostedViewModel sets showAlertDialog = true and HostedView shows Alert with Constants.dialogErrorTitle). Check onError for EventLoginFailed. Use get_file_by_path for HostedViewModel.swift and HostedView.swift.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/HostedViewModel.swift (hostedSessionDidEnd), HostedView.swift (alert)",
+      "related_flows": ["hosted-session"],
+      "related_apis": ["GlanceDefaultUI.startHostedSession", "GlanceUIDelegate.hostedSessionDidEnd"],
+      "related_errors": ["EventLoginFailed", "EventStartSessionFailed"]
+    },
+    {
+      "id": "invalid-parameter",
+      "symptoms": ["onError called with error.code EventInvalidParameter", "SDK rejects an operation", "Crash or unexpected behavior after passing params"],
+      "likely_causes": ["Invalid input (e.g. empty key when required, invalid video mode)", "Malformed GlanceVisitorInitParams", "groupid is zero or negative", "Wrong type or nil where required"],
+      "resolution": "Review GlanceError.message and ensure all required params are set and valid. For start(), use a valid GlanceVideoMode (VideoOff, VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway). For setVisitorParams, ensure groupid is set and from Glance admin. For hosted session, ensure username and password are non-empty.",
+      "related_flows": ["setup", "start-session", "hosted-session"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start", "GlanceDefaultUI.startHostedSession"],
+      "related_errors": ["EventInvalidParameter"]
+    },
+    {
+      "id": "invalid-state",
+      "symptoms": ["onError called with EventInvalidState", "Action not allowed in current state", "start() or startHostedSession() has no effect"],
+      "likely_causes": ["Calling start() or startHostedSession() when already in session", "Calling endSession when no session active", "Calling SDK methods in wrong order (e.g. start before setVisitorParams)"],
+      "resolution": "Ensure call order: setVisitorParams then start() (or setPresence then setVisitorParams for Presence). Track session state via delegate (sessionAgentConnected, sessionEnded) before starting a new session. For hosted session, check isHostedSessionActive (or equivalent) before startHostedSession; call stopHostedSession before starting again if needed.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (startSession builds params then calls start)",
+      "related_flows": ["setup", "start-session", "end-session", "hosted-session"],
+      "related_apis": ["GlanceDefaultUI.start", "GlanceDefaultUI.endSession", "GlanceDefaultUI.startHostedSession", "GlanceDefaultUI.stopHostedSession"],
+      "related_errors": ["EventInvalidState"]
+    },
+    {
+      "id": "camera-permission",
+      "symptoms": ["Video preview black or not starting", "Session with video fails or agent cannot see visitor video", "didStartVideoCapture / didStartPreviewVideoCapture not called"],
+      "likely_causes": ["Camera permission not granted", "User denied permission", "NSCameraUsageDescription missing in Info.plist", "Permission requested after start (too late)"],
+      "resolution": "Only needed when using video. Add NSCameraUsageDescription to Info.plist (e.g. 'Glance wants to use your camera'). Request AVCaptureDevice.requestAccess(for: .video) before starting a session with video. If not authorized, show an in-app alert and direct user to Settings. If not using video, do not add camera or microphone permissions. Sample: TestAppView.onAppear checks authorizationStatus, requests access if .notDetermined, sets showAlert if !authorized and shows Alert with message about camera permission.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppView.swift (onAppear, AVCaptureDevice.requestAccess)",
+      "related_flows": ["start-session-with-video"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start"],
+      "related_errors": []
+    },
+    {
+      "id": "init-timeout-expired",
+      "symptoms": ["initTimeoutExpired() delegate called", "SDK initialization does not complete", "setVisitorParams never completes"],
+      "likely_causes": ["Network slow or unreachable during init", "Init timeout value too low", "Server or firewall blocking Glance endpoints", "DNS or proxy issues"],
+      "resolution": "Increase or omit timeout in setVisitorParams (pass nil for no timeout). Ensure device has network access and can reach Glance services. Implement initTimeoutExpired() to inform the user (e.g. toast or alert). Sample app uses optional initTimeout in TestAppViewModel and passes it to setVisitorParams.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (initTimeout, setVisitorParams timeout)",
+      "related_flows": ["setup", "errors-and-timeouts"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams"],
+      "related_errors": []
+    },
+    {
+      "id": "start-timeout-expired",
+      "symptoms": ["startTimeoutExpired() delegate called", "Session key shown but agent never connects in time", "User sees key then timeout"],
+      "likely_causes": ["Agent did not join within start-session timeout", "Timeout configured too short", "Agent on wrong join page or wrong key"],
+      "resolution": "Increase GlanceTimeout in start(key:timeout:videoMode:) or use nil timeout. Implement startTimeoutExpired() to show a message (e.g. 'Agent did not join in time'). Inform user to share key and have agent join at www.glance.net/agentjoin promptly.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (startSessionTimeout, GlanceTimeout)",
+      "related_flows": ["start-session", "join-session", "errors-and-timeouts"],
+      "related_apis": ["GlanceDefaultUI.start"],
+      "related_errors": []
+    },
+    {
+      "id": "presence-timeout-expired",
+      "symptoms": ["presenceTimeoutExpired() delegate called", "Presence connection attempt times out", "Presence never connects"],
+      "likely_causes": ["Network delay or Presence server unreachable", "Presence timeout too short", "Firewall blocking WebSocket"],
+      "resolution": "Increase or omit timeout in setPresence(_:timeout:maxConnectAttempts:). Implement presenceTimeoutExpired() to update UI (e.g. show 'Presence connection timed out'). Check onError for EventPresenceConnectFail.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (presenceTimeout, onPresenceTapped)",
+      "related_flows": ["enable-presence", "errors-and-timeouts"],
+      "related_apis": ["GlanceDefaultUI.setPresence"],
+      "related_errors": ["EventPresenceConnectFail"]
+    },
+    {
+      "id": "login-failed-hosted",
+      "symptoms": ["EventLoginFailed in onError when starting hosted session", "hostedSessionDidEnd with error message about login"],
+      "likely_causes": ["Wrong username/password", "Account disabled or not licensed for hosted session", "Server URL wrong if custom"],
+      "resolution": "Verify credentials and Glance account permissions with admin. Show GlanceError.message to user; consider directing to password reset or admin. Sample: HostedViewModel shows alert on hostedSessionDidEnd with non-empty errorMessage.",
+      "related_flows": ["hosted-session"],
+      "related_apis": ["GlanceDefaultUI.startHostedSession"],
+      "related_errors": ["EventLoginFailed"]
+    },
+    {
+      "id": "connection-warning",
+      "symptoms": ["Unstable connection during session", "Agent or visitor sees poor quality or disconnects", "EventConnectionWarning in onEvent"],
+      "likely_causes": ["Weak or fluctuating network", "VPN or proxy issues", "High latency or packet loss"],
+      "resolution": "SDK fires EventConnectionWarning and EventClearWarning. Implement onEvent(_ event: GlanceEvent) and surface these to the user (e.g. banner 'Connection unstable'). Suggest stable Wi‑Fi or disabling VPN. Sample app logs events in TestAppViewModel.onEvent.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (onEvent)",
+      "related_flows": ["start-session"],
+      "related_apis": ["GlanceUIDelegate.onEvent"],
+      "related_errors": ["EventConnectionWarning", "EventException"]
+    },
+    {
+      "id": "join-failed",
+      "symptoms": ["Agent cannot join session", "EventJoinFailed in onError on agent side", "Key rejected at join page"],
+      "likely_causes": ["Invalid or expired session key", "Session already ended", "Wrong group or permissions", "Key mistyped"],
+      "resolution": "Ensure agent uses the exact key shown to the visitor and joins before session or key expires. Verify agent has join permission for the group. Visitor should share key over voice or secure channel; agent goes to www.glance.net/agentjoin.",
+      "related_flows": ["join-session", "start-session"],
+      "related_apis": [],
+      "related_errors": ["EventJoinFailed"]
+    },
+    {
+      "id": "package-not-found",
+      "symptoms": ["Cannot add GlanceDefaultUI package", "Package resolution failed", "GlanceSDK or GlanceDefaultUI not found"],
+      "likely_causes": ["Wrong repository URL", "Network or GitLab access issue", "Version tag does not exist", "Xcode cache"],
+      "resolution": "Use URL https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases and a valid version. Get the latest version via get_version_info(platform='ios', repo='default_ui') or get_requirements('ios') (use requirements.dependencies version). GlanceSDK is a dependency and resolves automatically. If using Xcode, try File > Packages > Reset Package Caches. For local package, ensure path points to cloned repo root.",
+      "related_flows": ["setup"],
+      "related_apis": [],
+      "related_errors": []
+    },
+    {
+      "id": "dialog-not-showing",
+      "symptoms": ["Terms dialog does not appear", "Session key dialog not shown", "Default UI dialogs missing"],
+      "likely_causes": ["Another window or view covering dialogs", "Delegate not set so Default UI may not advance", "Session flow not started (start not called or failed)", "Presenting view controller not in window hierarchy"],
+      "resolution": "Default UI presents dialogs via its own window. Ensure you called start() or started hosted session and that no custom UI is blocking. Set delegate so you can confirm sessionConnected and receivedSessionCode are called. Check onError for failures before dialog would show.",
+      "related_flows": ["start-session", "hosted-session"],
+      "related_apis": ["GlanceDefaultUI.start", "GlanceDefaultUI.setDelegate"],
+      "related_errors": ["EventStartSessionFailed", "EventInvalidState"]
+    },
+    {
+      "id": "localization-not-overriding",
+      "symptoms": ["App strings not used", "Default UI still shows default English", "Localizable.strings changes not visible"],
+      "likely_causes": ["Strings not in main bundle", "Wrong key names", "Wrong .lproj location", "Bundle not updated"],
+      "resolution": "Default UI loads from main bundle first, then module bundle. Add keys to your app's Localizable.strings (in your target) or create en.lproj (and others) in your app bundle with the same keys as in GlanceLocalizedStringsConstants. Key names match the constants (e.g. GLANCE_DEFAULT_UI_START_DIALOG_TITLE). See flow localization and README Localization section.",
+      "related_flows": ["localization"],
+      "related_apis": ["GlanceLocalizedStringsConstants"],
+      "related_errors": []
+    },
+    {
+      "id": "masking-not-working",
+      "symptoms": ["Agent still sees masked area", "addMaskedView has no effect", "WebView content not masked"],
+      "likely_causes": ["View not in hierarchy when session is active", "Mask added after session started and view not visible", "WebView: GlanceMaskContentController not set before WKWebView creation", "WebView in tab: isHidden not set to true when tab not visible", "SwiftUI: masking wrong view (must mask underlying UIView)"],
+      "resolution": "Call Glance.addMaskedView(view, withLabel: \"Label\") for views that are on screen during session. For SwiftUI, use .addMaskedView(withLabel:) modifier or wrap in UIHostingController and mask hostingController.view. For WebView: create GlanceMaskContentController(selectors, labels:), set on WKWebViewConfiguration.userContentController, create WKWebView with that config, then setWebView(maskingWebView). WebView masking displays while isHidden is false or the WebView is destroyed; when the WebView is in a tab or off-screen, set webView.isHidden = true when not visible and webView.isHidden = false when visible again. Sample: TestMaskingViewController (UIView), TestMaskingView (SwiftUI), TestWebViewController (WebView).",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestMaskingViewController.swift, TestMaskingView.swift, TestWebViewController.swift",
+      "related_flows": ["content-masking"],
+      "related_apis": ["Glance.addMaskedView", "GlanceMaskContentController"],
+      "related_errors": []
+    },
+    {
+      "id": "webview-masking-visibility",
+      "symptoms": ["WebView content visible to agent when tab switched", "WebView masking still shows when tab is hidden", "Agent sees WebView content when WebView is off-screen"],
+      "likely_causes": ["WebView kept in memory (e.g. in a tab) but isHidden not updated when tab or visibility changes"],
+      "resolution": "WebView masking displays as long as the WebView's isHidden is false or the WebView is destroyed. When the WebView is removed from view or kept in memory (e.g. part of a tab), set webView.isHidden = true when it is no longer visible and webView.isHidden = false when it should be visible again. This ensures the agent does not see WebView content when the user switches away from the tab.",
+      "related_flows": ["content-masking"],
+      "related_apis": ["GlanceMaskContentController", "setWebView"],
+      "related_errors": []
+    },
+    {
+      "id": "video-capture-not-starting",
+      "symptoms": ["didStartVideoCapture never called", "Visitor video not visible to agent", "Preview works but in-session video does not"],
+      "likely_causes": ["params.video = false", "Camera permission denied", "Session started with VideoOff", "Capture session stopped by app or OS"],
+      "resolution": "Set params.video = true in GlanceVisitorInitParams before setVisitorParams. Use a video mode in start (VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway). Ensure camera permission granted and AVCaptureDevice.requestAccess called before start. Do not stop the capture session yourself; SDK manages it.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (video, videoMode, startSession)",
+      "related_flows": ["start-session-with-video"],
+      "related_apis": ["GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start"],
+      "related_errors": []
+    },
+    {
+      "id": "onError-not-showing",
+      "symptoms": ["User never sees SDK errors", "Errors occur but no alert or feedback"],
+      "likely_causes": ["onError not implemented or empty", "Delegate not set", "UI not bound to show alert (e.g. showAlertDialog not observed)"],
+      "resolution": "Implement onError(_ error: GlanceError) and set a flag or publish state so the UI shows an alert. Sample: TestAppViewModel sets errorCode = error.code.description, errorMessage = error.message, showAlertDialog = true; TestAppView has .alert(isPresented: $viewModel.showAlertDialog) with title and message. For hosted session also handle hostedSessionDidEnd(errorMessage:) with non-empty errorMessage.",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift (onError), TestAppView.swift (alert)",
+      "related_flows": ["errors-and-timeouts", "hosted-session"],
+      "related_apis": ["GlanceUIDelegate.onError", "GlanceUIDelegate.hostedSessionDidEnd"],
+      "related_errors": []
+    },
+    {
+      "id": "black-screen-or-blank-video",
+      "symptoms": ["Agent sees black screen", "Visitor view is blank", "Screen share shows nothing"],
+      "likely_causes": ["Render mode or capture issue", "Window or view not in hierarchy", "App in background or suspended", "Glance.setDrawViewHierarchy / render mode mismatch"],
+      "resolution": "Ensure the view to be shared is in the active window hierarchy. For render mode, sample app uses Glance.setDrawViewHierarchy(true) when option 'drawViewInHierarchy' is selected. Check that no overlay is blocking the content. If app goes to background, SDK may show a mask (see GlanceLocalizedStringsConstants.backgroundPauseMaskLabel).",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppView.swift (setDrawViewHierarchy)",
+      "related_flows": ["start-session", "start-session-with-video"],
+      "related_apis": ["Glance.setDrawViewHierarchy"],
+      "related_errors": []
+    },
+    {
+      "id": "keyboard-masking",
+      "symptoms": ["Keyboard visible to agent", "Want to hide keyboard from share"],
+      "likely_causes": ["Keyboard masking not enabled"],
+      "resolution": "Call Glance.maskKeyboard(true) to show a mask over the keyboard (label from GlanceLocalizedStringsConstants.keyboardMaskLabel). Sample: TestAppView.onAppear calls Glance.maskKeyboard(true).",
+      "sample_ref": ".examples/glance-sample-app/glance-sample-app/TestAppView.swift (onAppear maskKeyboard)",
+      "related_flows": ["content-masking"],
+      "related_apis": ["Glance.maskKeyboard"],
+      "related_errors": []
+    }
+  ],
+  "usage": "Use get_troubleshooting(symptom_or_id) to find entries by symptom text or entry id. Each entry includes resolution, sample_ref (path in repo for get_file_by_path), related_flows, related_apis, and related_errors."
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://example.com/glance-sdk-manifest-v1.json",
+  "product": {
+    "id": "glance-default-ui-ios",
+    "name": "Glance Default UI (iOS)",
+    "platform": "ios",
+    "repo": "default_ui",
+    "description": "Out-of-the-box UI package for GlanceSDK on iOS. Parameter types (GlanceVisitorInitParams, GlanceVideoMode, GlanceError, GlanceEvent) and core APIs (e.g. addMaskedView, GlanceMaskContentController) come from GlanceSDK/GlanceCore.",
+    "repo_url": "https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases",
+    "docs_url": "https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases/-/blob/main/README.md"
+  },
+  "requirements": {
+    "swift_tools_version": "5.7",
+    "platforms": ["iOS 15+"],
+    "dependencies": [
+      { "name": "GlanceSDK", "version": "from: 7.2.0", "purpose": "Core SDK" }
+    ],
+    "permissions": ["Network", "Camera (only if using video)", "Microphone (only if using video)"]
+  }
+}

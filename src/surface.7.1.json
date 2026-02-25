@@ -1,0 +1,939 @@
+{
+  "surface": [
+    {
+      "id": "GlanceDefaultUI",
+      "name": "GlanceDefaultUI",
+      "kind": "class",
+      "summary": "Main entry point for Default UI. Singleton-style static methods; call setVisitorParams, then start or setPresence, and setDelegate to receive callbacks.",
+      "usage_note": "Call static methods. Set GlanceDefaultUI.setDelegate(yourDelegate) before starting a session.",
+      "related_protocols": [
+        "GlanceUIDelegate"
+      ],
+      "properties": [],
+      "methods": [
+        {
+          "id": "GlanceDefaultUI.setVisitorParams",
+          "name": "setVisitorParams",
+          "summary": "Sets the initial parameters for a visitor session (group ID, visitor ID, video). Required before starting a session. Can be called more than once; only groupid cannot be changed without relaunching the app.",
+          "usage_snippet": "GlanceDefaultUI.setVisitorParams(_ params: GlanceVisitorInitParams, timeout: Double?, maxConnectAttempts: Int = 0, fetchSettingsInterval: GlanceDefaultUI.SettingsInterval = .never, isDefaultPresenceIntegrationEnabled: Bool = true, isDefaultTwoWayVideoIntegration: Bool = true, isDefaultRenderModeIntegration: Bool = true)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.start",
+          "name": "start",
+          "summary": "Starts a session with optional key and video mode. Default UI shows App Share or App Share + Video dialog, then session key for the agent to join. Use nil key for random 4-digit key.",
+          "usage_snippet": "GlanceDefaultUI.start(key: String? = nil, timeout: GlanceTimeout? = nil, videoMode: GlanceVideoMode)",
+          "usage_note": "Import GlanceCore. Use the enum case by name, e.g. VideoOff, not .VideoOff (e.g. videoMode: VideoOff). Valid values: VideoOff, VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway. Do not use .VideoOff, .videoOff, or .off.",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.endSession",
+          "name": "endSession",
+          "summary": "Ends the currently active session and cleans up resources.",
+          "usage_snippet": "GlanceDefaultUI.endSession()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.setPresence",
+          "name": "setPresence",
+          "summary": "Toggles the presence feature for real-time session initiation from an agent to a visitor (1-Click Connect). Call setVisitorParams with visitorid when using Presence.",
+          "usage_snippet": "GlanceDefaultUI.setPresence(_ isPresenceOn: Bool, timeout: Double? = nil, maxConnectAttempts: Int32? = nil)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.setDelegate",
+          "name": "setDelegate",
+          "summary": "Assigns a delegate conforming to GlanceUIDelegate to receive session, presence, video, and error callbacks.",
+          "usage_snippet": "GlanceDefaultUI.setDelegate(_ delegate: GlanceUIDelegate)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.startHostedSession",
+          "name": "startHostedSession",
+          "summary": "Starts a hosted session (agent-initiated). Agent authenticates with Glance username and password; guest does not need group ID.",
+          "usage_snippet": "GlanceDefaultUI.startHostedSession(username: String, password: String)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.stopHostedSession",
+          "name": "stopHostedSession",
+          "summary": "Stops the current hosted session.",
+          "usage_snippet": "GlanceDefaultUI.stopHostedSession()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        }
+      ]
+    },
+    {
+      "id": "GlanceVideoMode",
+      "name": "GlanceVideoMode",
+      "kind": "enum",
+      "summary": "Enum for the videoMode parameter of GlanceDefaultUI.start(key:timeout:videoMode:). Import GlanceCore; use case name directly.",
+      "usage_note": "Import GlanceCore. Reference by name: VideoOff, VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway (e.g. videoMode: VideoOff). Do not use .VideoOff or .videoOff.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceDefaultUI.SettingsInterval",
+      "name": "SettingsInterval",
+      "kind": "enum",
+      "summary": "Enum for fetchSettingsInterval in GlanceDefaultUI.setVisitorParams (7.1 only). Use GlanceDefaultUI.SettingsInterval to avoid compile errors.",
+      "usage_note": "Valid values: .never, .always, .repeating(Int). Example: fetchSettingsInterval: .never or .repeating(3600). Always qualify as GlanceDefaultUI.SettingsInterval (not SettingsInterval alone).",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceVisibility",
+      "name": "GlanceVisibility",
+      "kind": "enum",
+      "summary": "Widget visibility in delegate onUpdateVisibility(to:).",
+      "usage_note": "Valid values: tab, full. Use GlanceVisibility.tab or .full.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceLocation",
+      "name": "GlanceLocation",
+      "kind": "enum",
+      "summary": "Widget corner/location in delegate onUpdateLocation(to:).",
+      "usage_note": "Valid values: topLeft, topRight, bottomLeft, bottomRight. Use GlanceLocation.topLeft or .topRight, .bottomLeft, .bottomRight.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceTimeout",
+      "name": "GlanceTimeout",
+      "kind": "class",
+      "summary": "Timeout for GlanceDefaultUI.start(key:timeout:videoMode:). Not an enum; construct with time and type.",
+      "usage_note": "Use GlanceTimeout(timeInSeconds: Double, type: GlanceTimeout.TimeoutType). TimeoutType values: .default, .network. Do not use raw strings.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceError",
+      "name": "GlanceError",
+      "kind": "struct",
+      "summary": "Error passed to GlanceUIDelegate.onError(_ error: GlanceError). Has .code and .message.",
+      "usage_note": "error.code is EventCode (7.1) or GlanceSDKEventCode (7.2). Use exact enum case names (e.g. .EventStartSessionFailed, .EventInvalidParameter). error.message is the description string.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceSDKEventCode",
+      "name": "GlanceSDKEventCode",
+      "kind": "enum",
+      "summary": "Error/event codes in GlanceError.code (7.2). In 7.1 the type is EventCode with same case names.",
+      "usage_note": "Valid values (use exact names): EventNone, EventInvalidParameter, EventInvalidState, EventStartSessionFailed, EventJoinFailed, EventSessionEnded, EventPresenceConnected, EventPresenceConnectFail, EventPresenceShowTerms, EventPresenceDisconnected, EventVisitorInitialized, EventConnectionWarning, EventClearWarning, EventGuestCountChange, and others. Use e.g. error.code == .EventStartSessionFailed.",
+      "properties": [],
+      "methods": []
+    },
+    {
+      "id": "GlanceUIDelegate",
+      "name": "GlanceUIDelegate",
+      "kind": "protocol",
+      "summary": "Implement this protocol and pass your object to GlanceDefaultUI.setDelegate(_:) to receive session, presence, video, and error callbacks.",
+      "usage_note": "Implement all methods (or provide empty bodies). SDK calls these; you do not call them.",
+      "implemented_by_app": true,
+      "required_by": [
+        "GlanceDefaultUI.setDelegate"
+      ],
+      "properties": [],
+      "methods": [
+        {
+          "id": "GlanceDefaultUI.sessionConnected",
+          "name": "sessionConnected",
+          "summary": "Called by the SDK when the session is connected (waiting for agent). Default UI shows waiting dialog. Implement GlanceUIDelegate.sessionConnected to be notified.",
+          "usage_snippet": "func sessionConnected(dismissAction: (() -> Void)?)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.presenceDidConnect",
+          "name": "presenceDidConnect",
+          "summary": "Called when Presence has connected. Implement GlanceUIDelegate.presenceDidConnect to update UI (e.g. connection status).",
+          "usage_snippet": "func presenceDidConnect()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.presenceDidDisconnect",
+          "name": "presenceDidDisconnect",
+          "summary": "Called when Presence has disconnected. Implement GlanceUIDelegate.presenceDidDisconnect to update UI.",
+          "usage_snippet": "func presenceDidDisconnect()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.presenceSessionStarted",
+          "name": "presenceSessionStarted",
+          "summary": "Called when a session has been started via Presence. Implement GlanceUIDelegate.presenceSessionStarted to be notified.",
+          "usage_snippet": "func presenceSessionStarted()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.presenceShowTerms",
+          "name": "presenceShowTerms",
+          "summary": "Called when the agent has requested a session and terms should be shown. Default UI shows Start or Share Video dialog. Implement GlanceUIDelegate.presenceShowTerms to be notified.",
+          "usage_snippet": "func presenceShowTerms(sessionParams: GlanceSessionParams)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.receivedSessionCode",
+          "name": "receivedSessionCode",
+          "summary": "Called when a session code has been received. Default UI shows the code dialog. Implement GlanceUIDelegate.receivedSessionCode to be notified (e.g. for logging).",
+          "usage_snippet": "func receivedSessionCode(_ sessionCode: String)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.sessionEnded",
+          "name": "sessionEnded",
+          "summary": "Called when the session has ended. Default UI hides dialogs and ends session UI. Implement GlanceUIDelegate.sessionEnded to be notified.",
+          "usage_snippet": "func sessionEnded(_ sessionKey: String?)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.sessionAgentConnected",
+          "name": "sessionAgentConnected",
+          "summary": "Called when an agent has joined the session. Default UI hides waiting dialog and starts screen share (and video if configured). Implement GlanceUIDelegate.sessionAgentConnected to be notified.",
+          "usage_snippet": "func sessionAgentConnected()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.onGuestCountChange",
+          "name": "onGuestCountChange",
+          "summary": "Called when the number of guests (agents) in the session changes. Implement GlanceUIDelegate.onGuestCountChange to be notified.",
+          "usage_snippet": "func onGuestCountChange(guests: [GlanceAgent], response: String?)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.receivedVideoCaptureImage",
+          "name": "receivedVideoCaptureImage",
+          "summary": "Called when a video capture image is received. Default UI updates session coordinator. Implement GlanceUIDelegate.receivedVideoCaptureImage if needed.",
+          "usage_snippet": "func receivedVideoCaptureImage(_ image: UIImage)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.didStartVideoCapture",
+          "name": "didStartVideoCapture",
+          "summary": "Called when visitor video capture has started. Implement GlanceUIDelegate.didStartVideoCapture to be notified.",
+          "usage_snippet": "func didStartVideoCapture(_ captureSession: AVCaptureSession)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.didStopVideoCapture",
+          "name": "didStopVideoCapture",
+          "summary": "Called when visitor video capture has stopped. Implement GlanceUIDelegate.didStopVideoCapture to be notified.",
+          "usage_snippet": "func didStopVideoCapture(_ captureSession: AVCaptureSession)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.didStartPreviewVideoCapture",
+          "name": "didStartPreviewVideoCapture",
+          "summary": "Called when the preview video capture (camera preview before/during session) has started. Implement GlanceUIDelegate.didStartPreviewVideoCapture if needed.",
+          "usage_snippet": "func didStartPreviewVideoCapture(_ captureSession: AVCaptureSession)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.didStopPreviewVideoCapture",
+          "name": "didStopPreviewVideoCapture",
+          "summary": "Called when the preview video capture has stopped. Implement GlanceUIDelegate.didStopPreviewVideoCapture if needed.",
+          "usage_snippet": "func didStopPreviewVideoCapture(_ captureSession: AVCaptureSession)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.didPauseVisitorVideo",
+          "name": "didPauseVisitorVideo",
+          "summary": "Called when the visitor has paused their video. Default UI updates session (e.g. paused state). Implement GlanceUIDelegate.didPauseVisitorVideo to be notified.",
+          "usage_snippet": "func didPauseVisitorVideo()",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.didStartAgentViewer",
+          "name": "didStartAgentViewer",
+          "summary": "Called when the agent viewer (agent video/cursor view) is available. Default UI shows it in session. Implement GlanceUIDelegate.didStartAgentViewer to be notified.",
+          "usage_snippet": "func didStartAgentViewer(_ glanceAgentViewer: UIView)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.didStopAgentViewer",
+          "name": "didStopAgentViewer",
+          "summary": "Called when the agent viewer has been removed. Implement GlanceUIDelegate.didStopAgentViewer to be notified.",
+          "usage_snippet": "func didStopAgentViewer()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.onUpdateVisibility",
+          "name": "onUpdateVisibility",
+          "summary": "Called when widget visibility (tab vs full) changes. Default UI updates session coordinator. Implement GlanceUIDelegate.onUpdateVisibility to be notified.",
+          "usage_snippet": "func onUpdateVisibility(to visibility: GlanceVisibility)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.onUpdateLocation",
+          "name": "onUpdateLocation",
+          "summary": "Called when widget location (corner) changes. Default UI updates session coordinator. Implement GlanceUIDelegate.onUpdateLocation to be notified.",
+          "usage_snippet": "func onUpdateLocation(to location: GlanceLocation)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.onUpdateSize",
+          "name": "onUpdateSize",
+          "summary": "Called when widget/size update is received. Default UI updates session. Implement GlanceUIDelegate.onUpdateSize to be notified.",
+          "usage_snippet": "func onUpdateSize(size: String)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.askForVideoSession",
+          "name": "askForVideoSession",
+          "summary": "Called when the SDK needs confirmation to start a video session. Implement GlanceUIDelegate.askForVideoSession and call confirmAction or cancelAction.",
+          "usage_snippet": "func askForVideoSession(confirmAction: @escaping (() -> Void), cancelAction: (() -> Void)?)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.agentAskedForVideoSession",
+          "name": "agentAskedForVideoSession",
+          "summary": "Called when the agent has requested to start video. Default UI shows Share Video dialog. Implement GlanceUIDelegate.agentAskedForVideoSession to be notified.",
+          "usage_snippet": "func agentAskedForVideoSession()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.onUpdateAgentVideo",
+          "name": "onUpdateAgentVideo",
+          "summary": "Called when agent video state is updated. Default UI shows agent video. Implement GlanceUIDelegate.onUpdateAgentVideo to be notified.",
+          "usage_snippet": "func onUpdateAgentVideo()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.initTimeoutExpired",
+          "name": "initTimeoutExpired",
+          "summary": "Called when the init (setVisitorParams) timeout has expired. Implement GlanceUIDelegate.initTimeoutExpired to inform the user.",
+          "usage_snippet": "func initTimeoutExpired()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.startTimeoutExpired",
+          "name": "startTimeoutExpired",
+          "summary": "Called when the start-session timeout has expired (e.g. no agent joined in time). Implement GlanceUIDelegate.startTimeoutExpired to inform the user.",
+          "usage_snippet": "func startTimeoutExpired()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.presenceTimeoutExpired",
+          "name": "presenceTimeoutExpired",
+          "summary": "Called when the Presence connection timeout has expired. Implement GlanceUIDelegate.presenceTimeoutExpired to inform the user.",
+          "usage_snippet": "func presenceTimeoutExpired()",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.onEvent",
+          "name": "onEvent",
+          "summary": "Called when an SDK event occurs. Default UI forwards to this delegate method. Implement to receive events.",
+          "usage_snippet": "func onEvent(_ event: GlanceEvent)",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceDefaultUI.onError",
+          "name": "onError",
+          "summary": "Called when an error occurs. Default UI forwards to delegate. Implement GlanceUIDelegate.onError to show errors to the user (error.code is EventCode, error.message is description).",
+          "usage_snippet": "func onError(_ error: GlanceError)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.hostedSessionDidStart",
+          "name": "hostedSessionDidStart",
+          "summary": "Called when a hosted session has started. Default UI shows the session key. Implement GlanceUIDelegate.hostedSessionDidStart to be notified (e.g. display key).",
+          "usage_snippet": "func hostedSessionDidStart(sessionKey: String)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        },
+        {
+          "id": "GlanceDefaultUI.hostedSessionDidEnd",
+          "name": "hostedSessionDidEnd",
+          "summary": "Called when the hosted session has ended. If errorMessage is non-empty, an error occurred. Implement GlanceUIDelegate.hostedSessionDidEnd to cleanup and optionally show the error.",
+          "usage_snippet": "func hostedSessionDidEnd(errorMessage: String)",
+          "since_version": "6.6.0",
+          "confidence": "canonical"
+        }
+      ]
+    },
+    {
+      "id": "GlanceService",
+      "name": "GlanceService",
+      "kind": "class",
+      "summary": "Optional: use when customizing dialogs or terms URL. Default UI uses this internally; you can provide a custom GlanceServiceType (e.g. custom termsUrl) when creating DialogsCoordinator.",
+      "usage_note": "Read or set termsUrl when supplying a custom service. Default init uses GlanceLocalizedStringsConstants.shareAppDialogURL.",
+      "properties": [
+        {
+          "id": "GlanceService.termsUrl",
+          "name": "termsUrl",
+          "summary": "URL for terms and conditions shown in dialogs. Set in init or when creating a custom GlanceService.",
+          "usage_snippet": "var termsUrl: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        }
+      ],
+      "methods": []
+    },
+    {
+      "id": "GlanceLocalizedStringsConstants",
+      "name": "GlanceLocalizedStringsConstants",
+      "kind": "struct",
+      "summary": "Public static let constants for localization string keys used by Default UI dialogs. Override strings via your app's Localizable.strings or use these keys for custom UI.",
+      "usage_note": "Access as GlanceLocalizedStringsConstants.<propertyName>. All 65 localization constants listed.",
+      "properties": [
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogTitle",
+          "name": "defaultUIPresenceDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogText",
+          "name": "defaultUIPresenceDialogText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogNoButtonTitle",
+          "name": "defaultUIPresenceDialogNoButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogNoButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogYesButtonTitle",
+          "name": "defaultUIPresenceDialogYesButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogYesButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogTermsText",
+          "name": "defaultUIPresenceDialogTermsText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogTermsText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIPresenceDialogTextVideo",
+          "name": "defaultUIPresenceDialogTextVideo",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIPresenceDialogTextVideo: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.nonDefaultUIPresenceDialogTitle",
+          "name": "nonDefaultUIPresenceDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let nonDefaultUIPresenceDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.nonDefaultUIPresenceDialogNoButtonTitle",
+          "name": "nonDefaultUIPresenceDialogNoButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let nonDefaultUIPresenceDialogNoButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.nonDefaultUIPresenceDialogYesButtonTitle",
+          "name": "nonDefaultUIPresenceDialogYesButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let nonDefaultUIPresenceDialogYesButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.nonDefaultUIPresenceDialogShowTermsButtonTitle",
+          "name": "nonDefaultUIPresenceDialogShowTermsButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let nonDefaultUIPresenceDialogShowTermsButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogTitle",
+          "name": "defaultUIStartDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogSubtitle",
+          "name": "defaultUIStartDialogSubtitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogSubtitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogTitleAgent",
+          "name": "defaultUIStartDialogTitleAgent",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogTitleAgent: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogPhoneText",
+          "name": "defaultUIStartDialogPhoneText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogPhoneText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogHeadsetText",
+          "name": "defaultUIStartDialogHeadsetText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogHeadsetText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogDrawText",
+          "name": "defaultUIStartDialogDrawText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogDrawText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogVideoText",
+          "name": "defaultUIStartDialogVideoText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogVideoText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogCancelButtonTitle",
+          "name": "defaultUIStartDialogCancelButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogCancelButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogAcceptButtonTitle",
+          "name": "defaultUIStartDialogAcceptButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogAcceptButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIStartDialogTermsText",
+          "name": "defaultUIStartDialogTermsText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIStartDialogTermsText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.videoDefaultUIStartDialogText",
+          "name": "videoDefaultUIStartDialogText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let videoDefaultUIStartDialogText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.videoDefaultUIStartDialogCancelButtonTitle",
+          "name": "videoDefaultUIStartDialogCancelButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let videoDefaultUIStartDialogCancelButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.videoDefaultUIStartDialogAcceptButtonTitle",
+          "name": "videoDefaultUIStartDialogAcceptButtonTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let videoDefaultUIStartDialogAcceptButtonTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.videoDefaultUIStartDialogTermsText",
+          "name": "videoDefaultUIStartDialogTermsText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let videoDefaultUIStartDialogTermsText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.videoDefaultUIInQueueText",
+          "name": "videoDefaultUIInQueueText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let videoDefaultUIInQueueText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.keyboardMaskLabel",
+          "name": "keyboardMaskLabel",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let keyboardMaskLabel: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.backgroundSuspendMaskLabel",
+          "name": "backgroundSuspendMaskLabel",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let backgroundSuspendMaskLabel: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.backgroundPauseMaskLabel",
+          "name": "backgroundPauseMaskLabel",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let backgroundPauseMaskLabel: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIAgentCodeText",
+          "name": "defaultUIAgentCodeText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIAgentCodeText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIInQueueText",
+          "name": "defaultUIInQueueText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIInQueueText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUICancelText",
+          "name": "defaultUICancelText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUICancelText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIVisitorEndDialogTitle",
+          "name": "defaultUIVisitorEndDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIVisitorEndDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIVisitorEndDialogMessage",
+          "name": "defaultUIVisitorEndDialogMessage",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIVisitorEndDialogMessage: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIVisitorEndDialogEndButton",
+          "name": "defaultUIVisitorEndDialogEndButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIVisitorEndDialogEndButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.defaultUIVisitorEndDialogCancelButton",
+          "name": "defaultUIVisitorEndDialogCancelButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let defaultUIVisitorEndDialogCancelButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextAppShare",
+          "name": "sessionStartDialogHeaderTextAppShare",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextAppShare: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextAppShareAndVideo",
+          "name": "sessionStartDialogHeaderTextAppShareAndVideo",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextAppShareAndVideo: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextInQueue",
+          "name": "sessionStartDialogHeaderTextInQueue",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextInQueue: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextInQueueCode",
+          "name": "sessionStartDialogHeaderTextInQueueCode",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextInQueueCode: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextInSessionAddVideo",
+          "name": "sessionStartDialogHeaderTextInSessionAddVideo",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextInSessionAddVideo: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogHeaderTextEndSession",
+          "name": "sessionStartDialogHeaderTextEndSession",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogHeaderTextEndSession: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogDescriptionTextAppShare",
+          "name": "sessionStartDialogDescriptionTextAppShare",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogDescriptionTextAppShare: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogDescriptionTextAppShareAndVideo",
+          "name": "sessionStartDialogDescriptionTextAppShareAndVideo",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogDescriptionTextAppShareAndVideo: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogDescriptionTextInSessionAddVideo",
+          "name": "sessionStartDialogDescriptionTextInSessionAddVideo",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogDescriptionTextInSessionAddVideo: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogAcceptButtonText",
+          "name": "sessionStartDialogAcceptButtonText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogAcceptButtonText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogDeclineButtonText",
+          "name": "sessionStartDialogDeclineButtonText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogDeclineButtonText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogYesButtonText",
+          "name": "sessionStartDialogYesButtonText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogYesButtonText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogNoButtonText",
+          "name": "sessionStartDialogNoButtonText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogNoButtonText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.sessionStartDialogTermsLinkText",
+          "name": "sessionStartDialogTermsLinkText",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let sessionStartDialogTermsLinkText: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.cameraAlertTitle",
+          "name": "cameraAlertTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let cameraAlertTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.cameraPermission",
+          "name": "cameraPermission",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let cameraPermission: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.goToSettings",
+          "name": "goToSettings",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let goToSettings: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogTitle",
+          "name": "shareAppDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogVideoTitle",
+          "name": "shareAppDialogVideoTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogVideoTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogSubtitle",
+          "name": "shareAppDialogSubtitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogSubtitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogVideoSubtitle",
+          "name": "shareAppDialogVideoSubtitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogVideoSubtitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogPrimaryButton",
+          "name": "shareAppDialogPrimaryButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogPrimaryButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogSecondaryButton",
+          "name": "shareAppDialogSecondaryButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogSecondaryButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.shareAppDialogURL",
+          "name": "shareAppDialogURL",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let shareAppDialogURL: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.waitingDialogTitle",
+          "name": "waitingDialogTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let waitingDialogTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.logoViewTitle",
+          "name": "logoViewTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let logoViewTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.dialogHostedSessionKeyTitle",
+          "name": "dialogHostedSessionKeyTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let dialogHostedSessionKeyTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.dialogErrorTitle",
+          "name": "dialogErrorTitle",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let dialogErrorTitle: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.dialogErrorPrimaryButton",
+          "name": "dialogErrorPrimaryButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let dialogErrorPrimaryButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        },
+        {
+          "id": "GlanceLocalizedStringsConstants.dialogErrorSecondaryButton",
+          "name": "dialogErrorSecondaryButton",
+          "summary": "Localization string key for Default UI.",
+          "usage_snippet": "static let dialogErrorSecondaryButton: String",
+          "since_version": "6.6.0",
+          "confidence": "recommended"
+        }
+      ],
+      "methods": []
+    }
+  ]
+}

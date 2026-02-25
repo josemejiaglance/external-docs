@@ -1,0 +1,188 @@
+---
+title: Hosted Sessions
+description: Start an agent-authenticated cobrowse session from within your iOS app. The agent authenticates with Glance credentials; visitors join without needing a group ID.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Hosted Sessions
+
+A hosted session is agent-initiated from inside the mobile app. The agent signs in with their Glance credentials; a session key is generated and displayed. A guest visitor can then join that key without needing their own group ID.
+
+This flow is used when the agent is using the same app as the visitor (e.g. a field agent demo app) rather than the standard Glance agent join portal.
+
+## Prerequisites
+
+- [Initial Setup](../getting-started/setup) completed — delegate must be assigned **before** `startHostedSession`.
+- Valid Glance agent username and password.
+- The Glance account must have permission to start hosted sessions.
+
+## Implementation
+
+<Steps>
+
+### Set the delegate before starting
+
+The delegate must be set before `startHostedSession` is called. In a tab-based UI, set it in `onAppear` so it is always current:
+
+```swift showLineNumbers filename="HostedView.swift"
+.onAppear {
+    GlanceDefaultUI.setDelegate(viewModel)
+}
+```
+
+### Start the hosted session
+
+```swift showLineNumbers filename="HostedViewModel.swift"
+GlanceDefaultUI.startHostedSession(username: username, password: password)
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `username` | `String` | Yes | Agent's Glance username. Must not be empty. |
+| `password` | `String` | Yes | Agent's Glance password. Must not be empty. |
+
+### Implement hosted session delegate callbacks
+
+```swift showLineNumbers filename="HostedViewModel.swift"
+extension HostedViewModel: GlanceUIDelegate {
+
+    // Hosted session started — sessionKey is the 4-digit join key
+    func hostedSessionDidStart(sessionKey: String) {
+        self.sessionKey = sessionKey
+        isHostedSessionActive = true
+        // Default UI displays the key automatically
+        // You can also show it in your own UI
+    }
+
+    // Hosted session ended (clean exit or error)
+    func hostedSessionDidEnd(errorMessage: String) {
+        if !errorMessage.isEmpty {
+            // An error occurred — always show it to the user
+            self.errorMessage = errorMessage
+            showAlertDialog = true
+        } else {
+            // Clean end
+            sessionKey = nil
+            isHostedSessionActive = false
+        }
+    }
+
+    func onError(_ error: GlanceError) {
+        errorMessage = error.message
+        showAlertDialog = true
+    }
+
+    // All other GlanceUIDelegate methods should have empty bodies
+}
+```
+
+<Callout type="warning">
+Always check `errorMessage.isEmpty` in `hostedSessionDidEnd`. A non-empty message means the session ended due to an error (e.g. wrong credentials, network failure). Surface this message to the user — do not silently ignore it.
+</Callout>
+
+### Stop the hosted session
+
+```swift showLineNumbers
+GlanceDefaultUI.stopHostedSession()
+// hostedSessionDidEnd is called with an empty errorMessage on clean stop
+```
+
+### Show the error alert in SwiftUI
+
+Use `GlanceLocalizedStringsConstants` for localized button and title strings:
+
+```swift showLineNumbers filename="HostedView.swift"
+.alert(
+    GlanceLocalizedStringsConstants.dialogErrorTitle,
+    isPresented: $viewModel.showAlertDialog
+) {
+    Button(GlanceLocalizedStringsConstants.dialogErrorPrimaryButton) {
+        viewModel.showAlertDialog = false
+    }
+    Button(GlanceLocalizedStringsConstants.dialogErrorSecondaryButton, role: .cancel) {}
+} message: {
+    Text(viewModel.errorMessage)
+}
+```
+
+</Steps>
+
+## Full example: HostedViewModel
+
+```swift showLineNumbers filename="HostedViewModel.swift"
+import GlanceDefaultUI
+import Combine
+
+@MainActor
+class HostedViewModel: ObservableObject, GlanceUIDelegate {
+
+    @Published var sessionKey: String?
+    @Published var isHostedSessionActive = false
+    @Published var showAlertDialog = false
+    @Published var errorMessage = ""
+
+    func setDelegate() {
+        GlanceDefaultUI.setDelegate(self)
+    }
+
+    func toggleHostedSession(username: String, password: String) {
+        if isHostedSessionActive {
+            GlanceDefaultUI.stopHostedSession()
+        } else {
+            GlanceDefaultUI.startHostedSession(username: username, password: password)
+        }
+    }
+
+    // MARK: - GlanceUIDelegate
+
+    func hostedSessionDidStart(sessionKey: String) {
+        self.sessionKey = sessionKey
+        isHostedSessionActive = true
+    }
+
+    func hostedSessionDidEnd(errorMessage: String) {
+        if !errorMessage.isEmpty {
+            self.errorMessage = errorMessage
+            showAlertDialog = true
+        } else {
+            sessionKey = nil
+            isHostedSessionActive = false
+        }
+    }
+
+    func onError(_ error: GlanceError) {
+        errorMessage = error.message
+        showAlertDialog = true
+    }
+
+    // Empty implementations for unused delegate methods
+    func sessionConnected(dismissAction: (() -> Void)?) {}
+    func receivedSessionCode(_ sessionCode: String) {}
+    func sessionAgentConnected() {}
+    func sessionEnded(_ sessionKey: String?) {}
+    func presenceDidConnect() {}
+    func presenceDidDisconnect() {}
+    func presenceShowTerms(sessionParams: GlanceSessionParams) {}
+    func presenceSessionStarted() {}
+    func presenceTimeoutExpired() {}
+    func initTimeoutExpired() {}
+    func startTimeoutExpired() {}
+    func onEvent(_ event: GlanceEvent) {}
+    // ... remaining empty methods
+}
+```
+
+## Delegate call sequence
+
+| When | Callback |
+|---|---|
+| Session started, key available | `hostedSessionDidStart(sessionKey:)` |
+| Session ended (clean) | `hostedSessionDidEnd(errorMessage: "")` |
+| Session ended with error | `hostedSessionDidEnd(errorMessage: "<message>")` |
+| Login failed or other error | `onError(_:)` |
+
+## Next steps
+
+- [Troubleshooting: Hosted Sessions](../troubleshooting/hosted-and-errors)
+- [GlanceLocalizedStringsConstants](../../api/localization-constants)

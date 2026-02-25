@@ -1,0 +1,105 @@
+{
+  "integration": {
+    "version_notes": {
+      "7.1": "setVisitorParams includes fetchSettingsInterval: GlanceDefaultUI.SettingsInterval (.never, .always, .repeating). GlanceError.code is EventCode.",
+      "7.2": "setVisitorParams has no fetchSettingsInterval. GlanceError.code is GlanceSDKEventCode. To enable or configure remote settings when using Default UI, call Glance (Core) directly: Glance.enableSettings(isEnabled: true) to enable (1-hour refresh), or Glance.setSettingsAPIRefreshInterval(refreshInterval: GlanceRefreshInterval) for a custom interval (e.g. GlanceRefreshInterval(intervalInHours: -1) to disable)."
+    },
+    "version_guidance": "Always use the latest SDK version in code snippets and instructions. Do not hardcode version numbers (e.g. 6.6.0). To get the current version: (1) get_version_info(platform='ios', repo='default_ui') — returns product and requirements; use requirements.dependencies[].version for the GlanceDefaultUI/GlanceSDK version constraint. (2) get_requirements(platform='ios', repo='default_ui') — same dependency version info. (3) get_mobile_release_notes(platform_filter='ios') — returns release list from https://help.glance.cx/release-notes/mobile/; use the latest iOS SDK release version. Prefer get_version_info or get_requirements so package constraints match the manifest; use get_mobile_release_notes for release notes and dates.",
+    "summary": "Integrate Glance Default UI by following the sample app patterns. First step: add the SDK via Swift Package Manager (use the latest version or a specific version you need) or, if you prefer, add XCFrameworks downloaded from the public repo https://gitlab.com/glance-sdk-public/glance-framework-ios. Then set delegate early, use a central manager for Glance calls, call setVisitorParams then start/setPresence/startHostedSession. Implement GlanceUIDelegate for callbacks; use get_flow(flow_id) for delegate_calls and find_sample() then get_file_by_path() to read sample code.",
+    "surfaces_involved": ["GlanceDefaultUI", "GlanceUIDelegate", "GlanceService", "GlanceLocalizedStringsConstants"],
+    "recommended_flow_ids": ["setup", "start-session"],
+    "sample_app_reference": {
+      "path": ".examples/glance-sample-app",
+      "description": "The sample app in the repo is the canonical integration reference. Use find_sample(flow_id or method_id) to get matching sample metadata; use get_file_by_path(platform='ios', repo='default_ui', relative_path='.examples/glance-sample-app/glance-sample-app/<file>.swift') to read source. Key files: GlanceManager.swift (central API wrapper), TestAppViewModel.swift (full GlanceUIDelegate, presence, video, timeouts), HostedViewModel.swift (hosted session + error handling), SimpleSessionViewModel.swift (minimal start), HostedView.swift (hosted UI + setDelegate onAppear), TestAppView.swift (camera permission, setDelegate onAppear, onError alert), TestMaskingViewController.swift (UIView masking), TestWebViewController.swift (WebView masking), AppCoordinator.swift (navigation)."
+    },
+    "steps_overview": [
+      "Add the SDK: via SPM (Xcode File > Add Package Dependencies or Package.swift) using the latest version or a specific version, or add XCFrameworks downloaded from the public repo https://gitlab.com/glance-sdk-public/glance-framework-ios",
+      "Only if using video: add Info.plist NSCameraUsageDescription and optionally NSMicrophoneUsageDescription; if not using video, do not add camera or microphone permissions",
+      "Set delegate early: GlanceDefaultUI.setDelegate(self) in init (e.g. TestAppViewModel) or in onAppear (e.g. HostedView) before any start or startHostedSession",
+      "Optional: Create a GlanceManager (or similar) to wrap GlanceDefaultUI calls in one place; sample app uses GlanceManager.shared for setVisitorParams, setPresence, startSession, endSession, startHostedSession, stopHostedSession",
+      "Set visitor params: GlanceDefaultUI.setVisitorParams(params, timeout:, maxConnectAttempts:, [7.1 only: fetchSettingsInterval:,] integration flags). Required before start() or setPresence(). Use valid groupid from Glance admin",
+      "Start session: GlanceDefaultUI.start(key:timeout:videoMode:) for visitor-initiated; or setPresence(true) with visitorid for 1-Click Connect; or startHostedSession(username:password:) for agent-initiated",
+      "Implement GlanceUIDelegate: at minimum implement all methods (empty bodies OK). For errors show alert (onError); for hosted show key (hostedSessionDidStart) and error (hostedSessionDidEnd with non-empty errorMessage). See each flow's delegate_calls for when methods are invoked",
+      "Only if using video: request AVCaptureDevice.requestAccess(for: .video) before starting a session with video; show in-app alert if denied. If not using video, skip camera/microphone permissions and this step. Sample: TestAppView.onAppear",
+      "Localization: Override via app bundle Localizable.strings (keys in GlanceLocalizedStringsConstants) or add .lproj folders; module loads main bundle first"
+    ],
+    "detailed_steps": [
+      {
+        "step": "1. Add the SDK",
+        "description": "The first step to integrate the SDK is to add it via Swift Package Manager (using the latest version or whatever version is specified) or, if you prefer, to add XCFrameworks downloaded from the public repo.",
+        "options": [
+          "Swift Package Manager: In Xcode, File > Add Package Dependencies, URL https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases, select the latest version or a specific version (get latest via get_version_info(platform='ios', repo='default_ui') or get_requirements('ios'); use requirements.dependencies version). GlanceSDK is pulled in automatically.",
+          "Package.swift: Add .package(name: 'GlanceDefaultUI', url: 'https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases.git', from: '<LATEST>') and add GlanceDefaultUI to target dependencies. Replace <LATEST> with the version from get_version_info(platform='ios', repo='default_ui') or get_requirements('ios') (see version_guidance above).",
+          "Branch the repo: Clone or fork the repo, add as local package in Xcode (Add Local Package) or reference path in Package.swift for full customization.",
+          "XCFrameworks: Download XCFrameworks from the public repo https://gitlab.com/glance-sdk-public/glance-framework-ios and embed them in your app. Use #if canImport(GlanceFramework) for conditional imports if you ship both SPM and XCFramework builds."
+        ],
+        "sample_ref": "Sample app uses SPM; see Package.resolved in .examples/glance-sample-app."
+      },
+      {
+        "step": "2. Imports and delegate",
+        "description": "Import GlanceCore, GlanceSDK, GlanceDefaultUI (or GlanceFramework for XCFramework). Set delegate as early as possible: in the object that will implement GlanceUIDelegate, call GlanceDefaultUI.setDelegate(self) in init() (e.g. TestAppViewModel) or in onAppear (e.g. HostedView, TestAppView) so it is set before start() or startHostedSession().",
+        "code_reference": "TestAppViewModel.init() calls GlanceDefaultUI.setDelegate(self). HostedView.body.onAppear and TestAppView.testView.onAppear call viewModel.setDelegate() which calls GlanceDefaultUI.setDelegate(self).",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift",
+        "sample_path_hosted": ".examples/glance-sample-app/glance-sample-app/HostedView.swift"
+      },
+      {
+        "step": "3. Central API wrapper (recommended)",
+        "description": "Use a single class to call GlanceDefaultUI (and Glance for core APIs like addMaskedView, pause). The sample app uses GlanceManager.shared with setVisitorParams (full params including timeout, maxConnectAttempts, fetchSettingsInterval, integration flags), setPresence, startSession(key:timeout:videoMode:), endSession, startHostedSession, stopHostedSession, pause, togglePause. View models then call GlanceManager.shared instead of GlanceDefaultUI directly.",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/GlanceManager.swift"
+      },
+      {
+        "step": "4. setVisitorParams",
+        "description": "Build GlanceVisitorInitParams: set groupid (required, from Glance admin), optional visitorid (required for Presence), optional video = true for video sessions. Call GlanceDefaultUI.setVisitorParams(params, timeout:, maxConnectAttempts:, fetchSettingsInterval:, isDefaultPresenceIntegrationEnabled:, isDefaultTwoWayVideoIntegration:, isDefaultRenderModeIntegration:). Can be called more than once; only groupid cannot be changed without relaunch. For Presence, use a stable visitorid and call setPresence(true) and setVisitorParams with the same params.",
+        "code_reference": "TestAppViewModel.startSession() and startSessionRandomKey() build params from UI (groupId, visitorId, video), then GlanceManager.shared.setVisitorParams(...) with timeout and integration flags, then GlanceManager.shared.startSession(...). SimpleSessionViewModel.startSession() uses minimal params (groupid only) then startSession(key:sessionKey, videoMode: VideoOff).",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift",
+        "sample_path_simple": ".examples/glance-sample-app/glance-sample-app/Screens/SimpleSessionView/SimpleSessionViewModel.swift"
+      },
+      {
+        "step": "5. Start session (visitor-initiated)",
+        "description": "Call GlanceDefaultUI.start(key:timeout:videoMode:). Use nil key for random 4-digit key. VideoMode: VideoOff, VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway. Default UI shows terms dialog then session key. Delegate receives sessionConnected, receivedSessionCode, sessionAgentConnected, sessionEnded; optionally initTimeoutExpired, startTimeoutExpired, onError.",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift",
+        "flow_id": "start-session"
+      },
+      {
+        "step": "6. Presence (1-Click Connect)",
+        "description": "Call setPresence(true) with optional timeout and maxConnectAttempts. Ensure setVisitorParams was or is called with a stable visitorid. Delegate receives presenceDidConnect, presenceDidDisconnect, presenceShowTerms(sessionParams:), presenceSessionStarted, then session flow; presenceTimeoutExpired on timeout.",
+        "code_reference": "TestAppViewModel.onPresenceTapped() calls GlanceManager.shared.setPresence(...) then setVisitorParams(...).",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift",
+        "flow_id": "enable-presence"
+      },
+      {
+        "step": "7. Hosted session",
+        "description": "Call GlanceDefaultUI.startHostedSession(username:password:). Set delegate before calling. Implement hostedSessionDidStart(sessionKey:) to show the key; implement hostedSessionDidEnd(errorMessage:) and if errorMessage is non-empty show an alert (sample uses GlanceLocalizedStringsConstants.dialogErrorTitle, dialogErrorPrimaryButton, dialogErrorSecondaryButton). Call stopHostedSession() to stop.",
+        "code_reference": "HostedViewModel.toggleHostedSession calls GlanceManager.shared.startHostedSession/stopHostedSession. hostedSessionDidEnd checks !errorMessage.isEmpty then sets showAlertDialog = true. HostedView shows session key and alert with Constants.dialogErrorTitle.",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/HostedViewModel.swift",
+        "sample_path_view": ".examples/glance-sample-app/glance-sample-app/HostedView.swift",
+        "flow_id": "hosted-session"
+      },
+      {
+        "step": "8. Error handling",
+        "description": "Implement onError(_ error: GlanceError). error.code is EventCode (7.1) or GlanceSDKEventCode (7.2); error.message is description. Sample app sets errorCode/errorMessage and showAlertDialog = true so the view shows an Alert. Use get_troubleshooting(symptom) for common errors and resolutions.",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift"
+      },
+      {
+        "step": "9. Camera/microphone permission (only if using video)",
+        "description": "Only if the app will use video: add NSCameraUsageDescription to Info.plist (and optionally NSMicrophoneUsageDescription). Before starting a session with video, call AVCaptureDevice.requestAccess(for: .video). If not authorized, show an in-app alert directing user to Settings. If the app will not be using video, do not add these permissions or this step. Sample: TestAppView.onAppear checks authorizationStatus, requests access if .notDetermined, sets showAlert if !authorized.",
+        "sample_path": ".examples/glance-sample-app/glance-sample-app/TestAppView.swift"
+      },
+      {
+        "step": "10. Content masking",
+        "description": "UIView: Glance.addMaskedView(view, withLabel: \"Label\"). Remove with Glance.removeMaskedView(view). SwiftUI: use .addMaskedView(withLabel:) modifier (GlanceSDK) or wrap in UIHostingController and mask hostingController.view. WebView: GlanceMaskContentController(selectors, labels:), set on WKWebViewConfiguration.userContentController, create WKWebView with that config, then setWebView. WebView masking displays while the WebView's isHidden is false or the WebView is destroyed; when the WebView is in a tab or removed from view, set webView.isHidden = true when not visible and webView.isHidden = false when visible again. Sample: TestMaskingViewController (UIView), TestMaskingView (SwiftUI), TestWebViewController (WebView).",
+        "sample_path_ui": ".examples/glance-sample-app/glance-sample-app/TestMaskingViewController.swift",
+        "sample_path_swiftui": ".examples/glance-sample-app/glance-sample-app/TestMaskingView.swift",
+        "sample_path_web": ".examples/glance-sample-app/glance-sample-app/TestWebViewController.swift",
+        "flow_id": "content-masking"
+      },
+      {
+        "step": "11. Localization",
+        "description": "Default UI loads strings from main bundle first, then module bundle. Copy GlanceDefaultUI Resources/Localizable/en.lproj/Localizable.strings into your app or add keys to your Localizable.strings. Keys are in GlanceLocalizedStringsConstants (e.g. defaultUIStartDialogTitle, shareAppDialogURL). Add .lproj for other languages.",
+        "flow_id": "localization"
+      }
+    ],
+    "flow_ids": ["setup", "start-session", "start-session-with-video", "enable-presence", "join-session", "end-session", "hosted-session", "errors-and-timeouts", "content-masking", "localization"],
+    "engine_guidance": "When answering integration questions: (1) Always resolve SDK version from the MCP: use get_version_info(platform='ios', repo='default_ui') or get_requirements('ios') for the latest Default UI and GlanceSDK version; do not use hardcoded versions (e.g. 6.6.0). See version_guidance in this integration. (2) Prefer pointing to the sample app and specific files via find_sample(flow_id or method_id) and get_file_by_path(platform='ios', repo='default_ui', relative_path='...'). (3) Use get_flow(flow_id) to show steps and delegate_calls. (4) Use get_troubleshooting(symptom_or_id) for errors and failures. (5) Recommend the same call order and patterns as the sample app: setDelegate early, setVisitorParams then start/setPresence/startHostedSession, implement full GlanceUIDelegate (empty bodies minimum), handle onError and hostedSessionDidEnd(errorMessage) in UI. (6) Ask if the user will be using video; only add camera and microphone permissions (NSCameraUsageDescription, NSMicrophoneUsageDescription) when using video—if not using video, do not add these permissions."
+  }
+}

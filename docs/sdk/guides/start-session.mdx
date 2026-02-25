@@ -1,0 +1,164 @@
+---
+title: Start a Session
+description: Implement a visitor-initiated cobrowse session. The Default UI shows a consent dialog and then the 4-digit session key for the agent to join.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Start a Session
+
+A visitor-initiated session is the most common cobrowse flow. The visitor triggers session start from your app; the Default UI handles the consent dialog and session key display automatically.
+
+## Prerequisites
+
+- [Initial Setup](../getting-started/setup) completed — `setVisitorParams` called and delegate assigned.
+
+## Flow overview
+
+1. Your app calls `GlanceDefaultUI.start(...)`.
+2. Default UI presents the **App Share** consent dialog.
+3. The visitor taps **Accept**; the SDK obtains a 4-digit session key.
+4. Default UI shows the session key dialog; your delegate receives `receivedSessionCode(_:)`.
+5. The agent goes to `www.glance.net/agentjoin`, logs in, and enters the key.
+6. Your delegate receives `sessionAgentConnected()` — screen share begins.
+7. When the session ends, your delegate receives `sessionEnded(_:)`.
+
+## Implementation
+
+<Steps>
+
+### Call `start`
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+import GlanceDefaultUI
+import GlanceCore
+
+// Random 4-digit key, no timeout, no video
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+
+// Specific key and a 60-second agent-join timeout
+let timeout = GlanceTimeout(timeInSeconds: 60, type: .default)
+GlanceDefaultUI.start(key: "1234", timeout: timeout, videoMode: VideoOff)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `key` | `String?` | `nil` | A specific 4-digit key, or `nil` for a random one. |
+| `timeout` | `GlanceTimeout?` | `nil` | How long to wait for an agent before calling `startTimeoutExpired()`. `nil` = no timeout. |
+| `videoMode` | `GlanceVideoMode` | — | Required. Use `VideoOff` for screen-share-only. See [GlanceVideoMode](../../api/types#glancevideomode). |
+
+<Callout type="warning">
+Use the enum case name directly: `videoMode: VideoOff` — **not** `.VideoOff`, `.videoOff`, or `GlanceVideoMode.videoOff`. Import `GlanceCore` for the type.
+</Callout>
+
+### Implement delegate callbacks
+
+```swift showLineNumbers filename="MySessionViewModel.swift"
+extension MySessionViewModel: GlanceUIDelegate {
+
+    // Session is connected; waiting for agent to join
+    func sessionConnected(dismissAction: (() -> Void)?) {
+        // Default UI shows the waiting dialog automatically.
+        // Call dismissAction() to cancel if needed.
+    }
+
+    // 4-digit session key is ready
+    func receivedSessionCode(_ sessionCode: String) {
+        print("Session key: \(sessionCode)")
+        // Default UI displays this automatically.
+    }
+
+    // Agent has joined — screen share begins
+    func sessionAgentConnected() {
+        print("Agent connected")
+    }
+
+    // Session ended (by visitor or agent)
+    func sessionEnded(_ sessionKey: String?) {
+        print("Session ended, key was: \(sessionKey ?? "unknown")")
+    }
+
+    // Visitor init timed out (only if timeout set in setVisitorParams)
+    func initTimeoutExpired() {
+        showToast("Connection timed out. Please try again.")
+    }
+
+    // No agent joined within the start() timeout
+    func startTimeoutExpired() {
+        showToast("No agent joined in time.")
+    }
+
+    // An error occurred
+    func onError(_ error: GlanceError) {
+        showAlert(title: "Error", message: error.message)
+    }
+}
+```
+
+### Agent joins the session
+
+The agent is not in your mobile app — they join through the Glance web portal:
+
+1. Agent navigates to **[www.glance.net/agentjoin](https://www.glance.net/agentjoin)**.
+2. Agent signs in with Glance credentials.
+3. Agent enters the 4-digit session key shared by the visitor (typically via voice call).
+
+<Callout>
+Glance does not include a voice channel. Use your existing telephony or messaging system to share the session key.
+</Callout>
+
+### End the session
+
+Either the agent or the visitor can end the session. To end programmatically from the app:
+
+```swift showLineNumbers
+GlanceDefaultUI.endSession()
+// Delegate receives sessionEnded(_:)
+```
+
+</Steps>
+
+## Minimal example
+
+```swift showLineNumbers filename="SimpleSessionViewModel.swift"
+import GlanceDefaultUI
+import GlanceCore
+
+class SimpleSessionViewModel: ObservableObject, GlanceUIDelegate {
+
+    func startSession(groupId: Int, sessionKey: String?) {
+        let params = GlanceVisitorInitParams()
+        params.groupid = groupId
+
+        GlanceDefaultUI.setDelegate(self)
+        GlanceDefaultUI.setVisitorParams(params)
+        GlanceDefaultUI.start(key: sessionKey, timeout: nil, videoMode: VideoOff)
+    }
+
+    // MARK: - GlanceUIDelegate (implement all methods)
+    func sessionConnected(dismissAction: (() -> Void)?) {}
+    func receivedSessionCode(_ sessionCode: String) {}
+    func sessionAgentConnected() {}
+    func sessionEnded(_ sessionKey: String?) {}
+    func onError(_ error: GlanceError) { print(error.message) }
+    // ... remaining empty methods
+}
+```
+
+## Delegate call sequence
+
+| When | Callback |
+|---|---|
+| Session connected, waiting for agent | `sessionConnected(dismissAction:)` |
+| Session key received | `receivedSessionCode(_:)` |
+| Agent joined | `sessionAgentConnected()` |
+| Session ended | `sessionEnded(_:)` |
+| Init timeout expired | `initTimeoutExpired()` |
+| Start timeout expired | `startTimeoutExpired()` |
+| Any error | `onError(_:)` |
+
+## Next steps
+
+- [Video Sessions](./video-session) — add one-way or two-way video
+- [Presence](./presence) — let agents initiate sessions
+- [GlanceUIDelegate Reference](../../api/glance-ui-delegate) — all 30 delegate methods

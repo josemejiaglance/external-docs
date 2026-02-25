@@ -1,0 +1,253 @@
+{
+  "flows": [
+    {
+      "id": "setup",
+      "name": "Setup",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "Add the GlanceDefaultUI package and initialize the SDK with setVisitorParams. Set a delegate before starting sessions to receive callbacks.",
+      "confidence": "canonical",
+      "steps": [
+        {
+          "title": "Add the SDK (first step)",
+          "description": "The first step to integrate the SDK is to add it via Swift Package Manager (use the latest version or whatever version is specified) or, if you prefer, to add XCFrameworks downloaded from the public repo https://gitlab.com/glance-sdk-public/glance-framework-ios. Options: (1) SPM in Xcode: File > Add Package Dependencies, URL https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases, select latest or a specific version (get latest via get_version_info(platform='ios', repo='default_ui') or get_requirements('ios'); see integration version_guidance). (2) SPM in Package.swift: add the .package dependency with the desired version and link GlanceDefaultUI to your target. (3) Branch/fork: clone https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases and add as local package in Xcode or reference in Package.swift. (4) XCFrameworks: download from https://gitlab.com/glance-sdk-public/glance-framework-ios and embed the .xcframework(s) in your app target. GlanceSDK is pulled in automatically when using SPM or the Default UI repo.",
+          "code_snippet": "// SPM in Package.swift — use latest version from get_version_info(platform='ios', repo='default_ui') or get_requirements('ios'):\n.package(name: \"GlanceDefaultUI\", url: \"https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases.git\", from: \"<LATEST>\")"
+        },
+        {
+          "title": "Set visitor params",
+          "description": "Call setVisitorParams with GlanceVisitorInitParams (groupid required; visitorid and video optional). Required before start() or setPresence().",
+          "code_snippet": "let params = GlanceVisitorInitParams(); params.groupid = 33333; params.visitorid = \"optionalVisitorId\"; params.video = false; GlanceDefaultUI.setVisitorParams(params)"
+        },
+        {
+          "title": "Set delegate (recommended)",
+          "description": "Assign a GlanceUIDelegate to receive session code, errors, and lifecycle callbacks. Call setDelegate before start() or startHostedSession().",
+          "code_snippet": "GlanceDefaultUI.setDelegate(self)"
+        }
+      ],
+      "delegate_calls": []
+    },
+    {
+      "id": "start-session",
+      "name": "Start a session",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "Start a visitor-initiated session. Default UI shows App Share (or App Share + Video) dialog, then session key for the agent to join.",
+      "confidence": "canonical",
+      "prerequisites": ["setup"],
+      "steps": [
+        {
+          "title": "Start with key and video mode",
+          "description": "Call start(key:timeout:videoMode:). Use nil key for random 4-digit session key. VideoMode: VideoOff, VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, VideoLargeMultiway.",
+          "code_snippet": "GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)"
+        },
+        {
+          "title": "User accepts dialog",
+          "description": "Default UI shows terms and Accept/Cancel. On Accept, SDK obtains session key; your delegate receives receivedSessionCode(_:). Default UI shows the code dialog."
+        },
+        {
+          "title": "Waiting for agent",
+          "description": "When session is connected and waiting for agent, delegate receives sessionConnected(dismissAction:). When agent joins, delegate receives sessionAgentConnected(). Then session screen share (and optional video) UI is shown."
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Session connected, waiting for agent to join", "method": "sessionConnected", "note": "Default UI shows waiting dialog; dismissAction allows user to cancel." },
+        { "when": "Session key received from server", "method": "receivedSessionCode", "note": "sessionCode is the 4-digit key to share with agent." },
+        { "when": "Agent has joined the session", "method": "sessionAgentConnected", "note": "Default UI hides waiting dialog and starts screen share." },
+        { "when": "Session ends (user or agent)", "method": "sessionEnded", "note": "sessionKey is the key of the session that ended." },
+        { "when": "Init (setVisitorParams) timeout expires", "method": "initTimeoutExpired", "note": "Optional; only if timeout was set in setVisitorParams." },
+        { "when": "Start-session timeout expires (no agent joined)", "method": "startTimeoutExpired", "note": "Optional; only if timeout was passed to start()." },
+        { "when": "An error occurs", "method": "onError", "note": "GlanceError has code and message." }
+      ]
+    },
+    {
+      "id": "start-session-with-video",
+      "name": "Start a session with video",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "Start a session with one-way or two-way video. Set params.video = true in setVisitorParams, then call start with a video mode.",
+      "confidence": "canonical",
+      "prerequisites": ["setup"],
+      "steps": [
+        {
+          "title": "Enable video in params",
+          "description": "Set video = true on GlanceVisitorInitParams before setVisitorParams. Request camera permission (e.g. AVCaptureDevice.requestAccess) before starting.",
+          "code_snippet": "params.video = true; GlanceDefaultUI.setVisitorParams(params)"
+        },
+        {
+          "title": "Start with video mode",
+          "description": "Call start with VideoSmallVisitor, VideoLargeVisitor, VideoSmallMultiway, or VideoLargeMultiway. Default UI presents App Share + Video dialog (camera preview, terms)."
+        },
+        {
+          "title": "Video lifecycle (delegate)",
+          "description": "Before/during dialog: didStartPreviewVideoCapture, didStopPreviewVideoCapture. After agent joins: didStartVideoCapture, didStopVideoCapture; didStartAgentViewer, didStopAgentViewer when agent video view is shown/hidden; onUpdateAgentVideo when agent video state changes; receivedVideoCaptureImage for visitor frame. If agent requests video during session: agentAskedForVideoSession then askForVideoSession(confirmAction:cancelAction:). Widget changes: onUpdateVisibility, onUpdateLocation, onUpdateSize. Pause: didPauseVisitorVideo."
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Same as Start a session", "method": "sessionConnected, receivedSessionCode, sessionAgentConnected, sessionEnded, onError", "note": "All start-session delegate calls apply." },
+        { "when": "Preview camera starts/stops (dialog)", "method": "didStartPreviewVideoCapture", "method_end": "didStopPreviewVideoCapture" },
+        { "when": "Visitor video capture starts/stops in session", "method": "didStartVideoCapture", "method_end": "didStopVideoCapture" },
+        { "when": "Agent viewer (video/cursor view) appears/disappears", "method": "didStartAgentViewer", "method_end": "didStopAgentViewer" },
+        { "when": "Agent video state updates", "method": "onUpdateAgentVideo" },
+        { "when": "Visitor video frame received", "method": "receivedVideoCaptureImage" },
+        { "when": "Visitor pauses video", "method": "didPauseVisitorVideo" },
+        { "when": "Agent requests to start video", "method": "agentAskedForVideoSession", "note": "Default UI shows Share Video dialog." },
+        { "when": "SDK needs confirmation to start video", "method": "askForVideoSession", "note": "Call confirmAction() or cancelAction()." },
+        { "when": "Widget visibility/location/size changes", "method": "onUpdateVisibility, onUpdateLocation, onUpdateSize" }
+      ]
+    },
+    {
+      "id": "enable-presence",
+      "name": "Enable Presence (1-Click Connect)",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "Allow agents to initiate sessions to the visitor. Set visitorid in params, then setPresence(true). When agent sends a session request, Default UI shows terms dialog.",
+      "confidence": "canonical",
+      "prerequisites": ["setup"],
+      "steps": [
+        {
+          "title": "Set visitor id and enable presence",
+          "description": "Use a stable visitorid (e.g. from CRM) so agents can target this user. Call setPresence(true) and setVisitorParams with the same params (screenshare is set internally when presence is on).",
+          "code_snippet": "params.visitorid = \"uniqueVisitorID\"; GlanceDefaultUI.setPresence(true); GlanceDefaultUI.setVisitorParams(params)"
+        },
+        {
+          "title": "Handle presence and session callbacks",
+          "description": "When presence connects: presenceDidConnect(). When it disconnects: presenceDidDisconnect(). When agent requests a session: presenceShowTerms(sessionParams:) — Default UI shows Start or Share Video dialog and handles accept/decline. Then session flow runs: receivedSessionCode, sessionConnected, sessionAgentConnected, sessionEnded. On presence timeout: presenceTimeoutExpired(). When session starts via presence: presenceSessionStarted()."
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Presence connection established", "method": "presenceDidConnect" },
+        { "when": "Presence disconnected", "method": "presenceDidDisconnect" },
+        { "when": "Agent requested a session (terms dialog)", "method": "presenceShowTerms", "note": "sessionParams includes video mode." },
+        { "when": "Session started via presence", "method": "presenceSessionStarted" },
+        { "when": "Then same as Start a session", "method": "receivedSessionCode, sessionConnected, sessionAgentConnected, sessionEnded", "note": "After user accepts terms." },
+        { "when": "Presence connection timeout", "method": "presenceTimeoutExpired" },
+        { "when": "An error occurs", "method": "onError" }
+      ]
+    },
+    {
+      "id": "join-session",
+      "name": "Join a session (agent side)",
+      "surfaces_used": [],
+      "summary": "How the agent joins a session started by the visitor: go to join page, sign in, enter the session key. No delegate on the mobile app for this step.",
+      "confidence": "canonical",
+      "steps": [
+        {
+          "title": "Agent joins",
+          "description": "Agent goes to www.glance.net/agentjoin, logs in with Glance credentials, enters the 4-digit session key the visitor shared (e.g. over voice). Glance does not include voice; use your existing voice channel."
+        }
+      ],
+      "delegate_calls": []
+    },
+    {
+      "id": "end-session",
+      "name": "End session",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "End the current session from the app. Default UI can show an end-session confirmation dialog. Delegate receives sessionEnded.",
+      "confidence": "canonical",
+      "steps": [
+        {
+          "title": "End session",
+          "description": "Call endSession(). Cleans up and notifies delegate sessionEnded(sessionKey:).",
+          "code_snippet": "GlanceDefaultUI.endSession()"
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Session has ended", "method": "sessionEnded", "note": "sessionKey is the key of the session that ended (nil if not applicable)." }
+      ]
+    },
+    {
+      "id": "hosted-session",
+      "name": "Hosted session",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceUIDelegate"],
+      "summary": "Agent-initiated session: agent logs in with Glance credentials; guest does not need group ID. Join via joinssn protocol, /visitor/join, or URL with username and key.",
+      "confidence": "canonical",
+      "prerequisites": ["setup"],
+      "steps": [
+        {
+          "title": "Start hosted session",
+          "description": "Call startHostedSession(username:password:) with the agent's Glance credentials. Set delegate before calling.",
+          "code_snippet": "GlanceDefaultUI.startHostedSession(username: username, password: password)"
+        },
+        {
+          "title": "Handle hosted session callbacks",
+          "description": "Implement hostedSessionDidStart(sessionKey:) to show the session key to the agent; implement hostedSessionDidEnd(errorMessage:) to handle errors and cleanup (e.g. show alert if errorMessage is non-empty). Default UI shows the key dialog and handles errors.",
+          "code_snippet": "func hostedSessionDidStart(sessionKey: String) { /* show key */ }; func hostedSessionDidEnd(errorMessage: String) { if !errorMessage.isEmpty { /* show error */ } }"
+        },
+        {
+          "title": "Stop hosted session",
+          "description": "Call stopHostedSession() when the agent wants to end the hosted session.",
+          "code_snippet": "GlanceDefaultUI.stopHostedSession()"
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Hosted session started, key available", "method": "hostedSessionDidStart", "note": "sessionKey is the key for the agent to join." },
+        { "when": "Hosted session ended (or error)", "method": "hostedSessionDidEnd", "note": "errorMessage non-empty if an error occurred." },
+        { "when": "An error occurs", "method": "onError" }
+      ]
+    },
+    {
+      "id": "errors-and-timeouts",
+      "name": "Errors and timeouts",
+      "surfaces_used": ["GlanceUIDelegate"],
+      "summary": "Delegate methods called when errors or configurable timeouts occur. Implement these to inform the user or log.",
+      "confidence": "canonical",
+      "prerequisites": ["setup"],
+      "steps": [
+        {
+          "title": "Handle errors",
+          "description": "onError(_ error: GlanceError) is called when an error occurs in any flow. error.code matches EventCode; error.message is the description. Show an alert or log as in the sample app."
+        },
+        {
+          "title": "Handle timeouts",
+          "description": "If you pass timeout in setVisitorParams: initTimeoutExpired() when init does not complete in time. If you pass timeout in start(): startTimeoutExpired() when no agent joins in time. If presence is on: presenceTimeoutExpired() when presence connection times out. Implement to prompt the user or retry."
+        }
+      ],
+      "delegate_calls": [
+        { "when": "Any SDK error", "method": "onError" },
+        { "when": "setVisitorParams timeout expires", "method": "initTimeoutExpired" },
+        { "when": "start() timeout expires (no agent joined)", "method": "startTimeoutExpired" },
+        { "when": "Presence connection timeout", "method": "presenceTimeoutExpired" }
+      ]
+    },
+    {
+      "id": "content-masking",
+      "name": "Content masking",
+      "surfaces_used": ["GlanceDefaultUI"],
+      "summary": "Mask sensitive UI from the agent during screen share. Use Glance (core SDK) APIs—import GlanceSDK: addMaskedView for UIViews; for SwiftUI use .addMaskedView(withLabel:) or wrap in UIHostingController and mask its view; for WebView use GlanceMaskContentController.",
+      "confidence": "canonical",
+      "prerequisites": ["start-session"],
+      "steps": [
+        {
+          "title": "Mask UIView",
+          "description": "Call Glance.addMaskedView(view, withLabel: \"Label\") to mask a UIView. Agent sees a redaction and optional label. Remove with Glance.removeMaskedView(view).",
+          "code_snippet": "Glance.addMaskedView(view, withLabel: \"Profile Info\")"
+        },
+        {
+          "title": "Mask SwiftUI view",
+          "description": "Wrap SwiftUI view in UIHostingController and mask hostingController.view, or a specific subview.",
+          "code_snippet": "Glance.addMaskedView(hostingController.view, withLabel: \"Profile Info\")"
+        },
+        {
+          "title": "Mask WebView content",
+          "description": "Use GlanceMaskContentController with CSS selectors and labels, set on WKWebViewConfiguration.userContentController before creating the WKWebView. WebView masking displays while the WebView's isHidden is false or the WebView is destroyed. When the WebView is off-screen or in a tab, set webView.isHidden = true when it is not visible and webView.isHidden = false when it becomes visible again so the agent does not see content when the tab is switched away.",
+          "code_snippet": "let controller = GlanceMaskContentController(\"#licenseNumber, #ssn\", labels: \"License Number, SSN\"); config.userContentController = controller"
+        }
+      ],
+      "delegate_calls": []
+    },
+    {
+      "id": "localization",
+      "name": "Localization",
+      "surfaces_used": ["GlanceDefaultUI", "GlanceLocalizedStringsConstants"],
+      "summary": "Override or add localized strings. Default UI loads from main bundle first, then module bundle. Add or edit Localizable.strings; add new .lproj folders for other languages.",
+      "confidence": "recommended",
+      "steps": [
+        {
+          "title": "Edit strings",
+          "description": "Strings are in GlanceDefaultUI Resources/Localizable (en.lproj/Localizable.strings). Keys include GLANCE_DEFAULT_UI_START_DIALOG_TITLE, GLANCE_DEFAULT_UI_AGENT_CODE_TEXT, GLANCE_DEFAULT_UI_PRESENCE_DIALOG_TITLE, etc. Copy Localizable.strings into your app bundle or a new .lproj to override."
+        },
+        {
+          "title": "Add language",
+          "description": "Create e.g. es.lproj, copy Localizable.strings, translate values. Module loads from main bundle first, then DialogsCoordinator bundle."
+        }
+      ],
+      "delegate_calls": []
+    }
+  ]
+}

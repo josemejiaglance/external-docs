@@ -1,0 +1,208 @@
+---
+title: GlanceDefaultUI
+description: Static API surface for the Glance Default UI SDK. Covers all public methods with full signatures, parameters, and version notes.
+---
+
+import { Callout } from 'nextra/components'
+
+# GlanceDefaultUI
+
+`GlanceDefaultUI` is the main entry point for the SDK. It exposes singleton-style **static methods** — you never instantiate it directly.
+
+```swift showLineNumbers
+import GlanceDefaultUI
+import GlanceCore   // required for GlanceVideoMode, GlanceTimeout, etc.
+```
+
+## Methods
+
+### `setDelegate(_:)`
+
+Assigns the object that will receive session, Presence, video, and error callbacks via `GlanceUIDelegate`.
+
+```swift showLineNumbers
+static func setDelegate(_ delegate: GlanceUIDelegate)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `delegate` | `GlanceUIDelegate` | The object conforming to `GlanceUIDelegate`. Must be kept alive (retain strongly). |
+
+**Important:** Call this **before** `start()`, `setPresence()`, or `startHostedSession()`. Set it in `init()` or in `onAppear`, not after the user taps a button.
+
+```swift showLineNumbers
+// In your view model's init
+init() {
+    GlanceDefaultUI.setDelegate(self)
+}
+```
+
+---
+
+### `setVisitorParams(_:timeout:maxConnectAttempts:...)`
+
+Configures the visitor session. Must be called before `start()` or `setPresence()`.
+
+**v7.2 signature:**
+
+```swift showLineNumbers
+static func setVisitorParams(
+    _ params: GlanceVisitorInitParams,
+    timeout: Double? = nil,
+    maxConnectAttempts: Int = 0,
+    isDefaultPresenceIntegrationEnabled: Bool = true,
+    isDefaultTwoWayVideoIntegration: Bool = true,
+    isDefaultRenderModeIntegration: Bool = true
+)
+```
+
+**v7.1 signature** (adds `fetchSettingsInterval`):
+
+```swift showLineNumbers
+static func setVisitorParams(
+    _ params: GlanceVisitorInitParams,
+    timeout: Double? = nil,
+    maxConnectAttempts: Int = 0,
+    fetchSettingsInterval: GlanceDefaultUI.SettingsInterval = .never,
+    isDefaultPresenceIntegrationEnabled: Bool = true,
+    isDefaultTwoWayVideoIntegration: Bool = true,
+    isDefaultRenderModeIntegration: Bool = true
+)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `params` | `GlanceVisitorInitParams` | — | Visitor configuration. `groupid` is required. |
+| `timeout` | `Double?` | `nil` | Init timeout in seconds. `nil` = no timeout. On expiry, `initTimeoutExpired()` is called. |
+| `maxConnectAttempts` | `Int` | `0` | Max reconnect attempts. `0` = unlimited. |
+| `fetchSettingsInterval` | `GlanceDefaultUI.SettingsInterval` | `.never` | **v7.1 only.** Remote settings fetch interval. |
+| `isDefaultPresenceIntegrationEnabled` | `Bool` | `true` | Use Default UI dialogs for Presence terms. |
+| `isDefaultTwoWayVideoIntegration` | `Bool` | `true` | Use Default UI dialogs for video consent. |
+| `isDefaultRenderModeIntegration` | `Bool` | `true` | Use Default UI handling for render mode changes. |
+
+<Callout type="info">
+`setVisitorParams` can be called more than once to update `visitorid` or `video`. However, `groupid` cannot be changed after the first call without relaunching the app.
+</Callout>
+
+---
+
+### `start(key:timeout:videoMode:)`
+
+Starts a visitor-initiated cobrowse session. The Default UI shows the consent dialog, then displays the session key.
+
+```swift showLineNumbers
+static func start(
+    key: String? = nil,
+    timeout: GlanceTimeout? = nil,
+    videoMode: GlanceVideoMode
+)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `key` | `String?` | `nil` | A specific 4-digit session key, or `nil` for a random one. |
+| `timeout` | `GlanceTimeout?` | `nil` | How long to wait for an agent before `startTimeoutExpired()` fires. |
+| `videoMode` | `GlanceVideoMode` | — | Required. Controls whether and how video is shown. See [GlanceVideoMode](./types#glancevideomode). |
+
+<Callout type="warning">
+`videoMode` must be referenced by case name without a dot prefix: `videoMode: VideoOff`. Do **not** write `.VideoOff` or `.videoOff`. Import `GlanceCore`.
+</Callout>
+
+```swift showLineNumbers
+// Screen share only
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+
+// With visitor camera, 90-second agent timeout
+let timeout = GlanceTimeout(timeInSeconds: 90, type: .default)
+GlanceDefaultUI.start(key: nil, timeout: timeout, videoMode: VideoSmallVisitor)
+```
+
+---
+
+### `endSession()`
+
+Ends the currently active session and releases resources.
+
+```swift showLineNumbers
+static func endSession()
+```
+
+The delegate receives `sessionEnded(_ sessionKey:)` after this call.
+
+---
+
+### `setPresence(_:timeout:maxConnectAttempts:)`
+
+Enables or disables the Presence (1-Click Connect) feature, which allows agents to initiate sessions to this visitor.
+
+```swift showLineNumbers
+static func setPresence(
+    _ isPresenceOn: Bool,
+    timeout: Double? = nil,
+    maxConnectAttempts: Int32? = nil
+)
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `isPresenceOn` | `Bool` | — | `true` to enable, `false` to disable. |
+| `timeout` | `Double?` | `nil` | Presence connection timeout in seconds. `nil` = no timeout. |
+| `maxConnectAttempts` | `Int32?` | `nil` | Max reconnect attempts. `nil` = unlimited. |
+
+Call `setPresence(true)` **before** `setVisitorParams(...)` when enabling. A stable `visitorid` in params is required.
+
+---
+
+### `startHostedSession(username:password:)`
+
+Starts an agent-authenticated hosted session from within the app.
+
+```swift showLineNumbers
+static func startHostedSession(username: String, password: String)
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `username` | `String` | Glance agent username. Must not be empty. |
+| `password` | `String` | Glance agent password. Must not be empty. |
+
+The delegate receives `hostedSessionDidStart(sessionKey:)` on success and `hostedSessionDidEnd(errorMessage:)` on success or failure.
+
+---
+
+### `stopHostedSession()`
+
+Stops the currently active hosted session.
+
+```swift showLineNumbers
+static func stopHostedSession()
+```
+
+The delegate receives `hostedSessionDidEnd(errorMessage: "")` on a clean stop.
+
+---
+
+## Correct call order
+
+```swift showLineNumbers
+// 1. Set delegate first
+GlanceDefaultUI.setDelegate(self)
+
+// 2. Configure visitor
+GlanceDefaultUI.setVisitorParams(params)
+
+// 3a. Start visitor-initiated session
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoOff)
+
+// 3b. OR enable Presence
+GlanceDefaultUI.setPresence(true)
+GlanceDefaultUI.setVisitorParams(params)  // must also call setVisitorParams for Presence
+
+// 3c. OR start hosted session
+GlanceDefaultUI.startHostedSession(username: username, password: password)
+```
+
+## Next steps
+
+- [GlanceUIDelegate](./glance-ui-delegate) — all delegate methods
+- [Types & Enums](./types) — parameter types

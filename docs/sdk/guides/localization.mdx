@@ -1,0 +1,103 @@
+---
+title: Localization
+description: Override or translate Glance Default UI dialog strings. Add strings to your app bundle or create language-specific .lproj folders.
+---
+
+import { Callout } from 'nextra/components'
+
+# Localization
+
+The Default UI loads all dialog and label strings from your **app bundle first**, then falls back to the Default UI module bundle. This means you can override any string — or add a new language — simply by providing your own `Localizable.strings` file.
+
+## How the lookup works
+
+1. SDK looks for the string key in your app's **main bundle** (`en.lproj/Localizable.strings`).
+2. If not found, it falls back to the `GlanceDefaultUI` **module bundle**.
+
+To override a string: add the key with your value to your app's `Localizable.strings`. To add a new language: create a new `.lproj` folder (e.g. `es.lproj`) and copy `Localizable.strings` with translated values.
+
+## String keys
+
+All keys are exposed as constants on `GlanceLocalizedStringsConstants`. Use the constant property name to look up the key name at compile time:
+
+```swift showLineNumbers
+// Use the constant to get the key string
+let titleKey = GlanceLocalizedStringsConstants.defaultUIStartDialogTitle
+```
+
+See [GlanceLocalizedStringsConstants Reference](../../api/localization-constants) for the full list of all 65 constants.
+
+## Overriding strings
+
+Add your `Localizable.strings` override to your app target. The file must be in your app's main bundle.
+
+```text showLineNumbers filename="en.lproj/Localizable.strings"
+/* Override the start dialog title */
+"GLANCE_DEFAULT_UI_START_DIALOG_TITLE" = "Start Support Session";
+
+/* Override the in-queue waiting message */
+"GLANCE_DEFAULT_UI_IN_QUEUE_TEXT" = "Waiting for your agent…";
+
+/* Override the keyboard mask label */
+"GLANCE_KEYBOARD_MASK_LABEL" = "Keyboard hidden";
+```
+
+<Callout type="info">
+The exact string key names (e.g. `"GLANCE_DEFAULT_UI_START_DIALOG_TITLE"`) correspond to the values stored in each `GlanceLocalizedStringsConstants` property. Check the module's `en.lproj/Localizable.strings` in the `GlanceDefaultUI` sources to see all default values.
+</Callout>
+
+## Adding a new language
+
+1. In Xcode, select your project → **Info** tab → **Localizations** → click `+`.
+2. Add the language (e.g. Spanish → `es`).
+3. Xcode creates `es.lproj/Localizable.strings` in your app target.
+4. Translate all the Glance key-value pairs you want to override.
+
+```text showLineNumbers filename="es.lproj/Localizable.strings"
+"GLANCE_DEFAULT_UI_START_DIALOG_TITLE" = "Iniciar sesión de soporte";
+"GLANCE_DEFAULT_UI_IN_QUEUE_TEXT" = "Esperando al agente…";
+"GLANCE_DEFAULT_UI_AGENT_CODE_TEXT" = "Código de sesión";
+```
+
+The SDK will automatically use the device's current locale to select the correct `.lproj`.
+
+## Using constants in your custom UI
+
+If you build custom dialogs that complement the Default UI, reference the same constants for consistency:
+
+```swift showLineNumbers
+import GlanceDefaultUI
+
+// Display the error dialog with localized strings
+Alert(
+    title: Text(GlanceLocalizedStringsConstants.dialogErrorTitle),
+    message: Text(errorMessage),
+    primaryButton: .default(
+        Text(GlanceLocalizedStringsConstants.dialogErrorPrimaryButton)
+    ),
+    secondaryButton: .cancel(
+        Text(GlanceLocalizedStringsConstants.dialogErrorSecondaryButton)
+    )
+)
+```
+
+## Key string groups
+
+| Group | Key prefix examples |
+|---|---|
+| Start dialog | `defaultUIStartDialog*` |
+| Presence dialog | `defaultUIPresenceDialog*`, `nonDefaultUIPresenceDialog*` |
+| Session start sheet | `sessionStartDialog*` |
+| Video start dialog | `videoDefaultUIStartDialog*` |
+| Queue / waiting | `*InQueue*`, `waitingDialogTitle` |
+| End session dialog | `defaultUIVisitorEndDialog*` |
+| Hosted session | `dialogHostedSessionKeyTitle` |
+| Error dialog | `dialogError*` |
+| Camera permission | `cameraAlertTitle`, `cameraPermission`, `goToSettings` |
+| Mask labels | `keyboardMaskLabel`, `backgroundSuspendMaskLabel`, `backgroundPauseMaskLabel` |
+| Misc | `logoViewTitle`, `shareAppDialog*` |
+
+## Next steps
+
+- [GlanceLocalizedStringsConstants Reference](../../api/localization-constants) — full list of all 65 keys
+- [Troubleshooting: Localization](../troubleshooting/setup-and-masking#localization-strings-not-overriding)

@@ -1,0 +1,36 @@
+---
+title: Troubleshooting
+description: Diagnose and resolve common Glance Default UI integration issues. Each entry includes symptoms, likely causes, and a concrete resolution.
+asIndexPage: true
+---
+
+import { Cards } from 'nextra/components'
+
+# Troubleshooting
+
+Use this section when something isn't working as expected. Each article groups related issues by symptom.
+
+<Cards num={2}>
+  <Cards.Card title="Session Issues" href="./session-issues" arrow>
+    Session won't start, delegate callbacks not firing, dialog not showing, agent can't join, connection warnings.
+  </Cards.Card>
+  <Cards.Card title="Video & Presence" href="./video-and-presence" arrow>
+    Video not starting, camera permission issues, Presence not connecting, timeout problems.
+  </Cards.Card>
+  <Cards.Card title="Hosted Sessions & Errors" href="./hosted-and-errors" arrow>
+    Login failures, hostedSessionDidEnd errors, onError not displayed to users.
+  </Cards.Card>
+  <Cards.Card title="Setup, Masking & Localization" href="./setup-and-masking" arrow>
+    Package not found, masking not working, WebView visibility, localization strings not applied.
+  </Cards.Card>
+</Cards>
+
+## Quick diagnostics checklist
+
+Before diving into a specific article, verify these common causes:
+
+1. **`setDelegate` called before `start()`?** — Delegate must be assigned before any session method.
+2. **`setVisitorParams` called with a valid `groupid`?** — A zero or missing group ID silently prevents sessions from starting.
+3. **`onError` implemented and wired to UI?** — Many failures surface through `onError` but are silently dropped if the method is empty.
+4. **Network accessible?** — The SDK requires connectivity to Glance services.
+5. **Correct `videoMode` syntax?** — Use `videoMode: VideoOff`, not `.VideoOff`.

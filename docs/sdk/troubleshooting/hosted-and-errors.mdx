@@ -1,0 +1,171 @@
+---
+title: Hosted Sessions & Errors
+description: Troubleshoot hosted session login failures, hostedSessionDidEnd errors, and onError not being displayed to users.
+---
+
+import { Callout } from 'nextra/components'
+
+# Hosted Sessions & Errors
+
+## `hostedSessionDidEnd` called with a non-empty error message
+
+**Symptoms:** Hosted session ends immediately after starting. `hostedSessionDidEnd(errorMessage:)` fires with a non-empty `errorMessage`. Agent cannot start the session.
+
+**Likely causes:**
+- Invalid Glance username or password.
+- Account not licensed for hosted sessions.
+- Network or server error.
+- Wrong server URL if using a custom configuration.
+
+**Resolution:**
+
+Always check `errorMessage.isEmpty` and surface non-empty errors to the user:
+
+```swift showLineNumbers
+func hostedSessionDidEnd(errorMessage: String) {
+    if !errorMessage.isEmpty {
+        // An error occurred — show it
+        self.errorMessage = errorMessage
+        showAlertDialog = true
+    } else {
+        // Clean end
+        sessionKey = nil
+        isHostedSessionActive = false
+    }
+}
+```
+
+Use `GlanceLocalizedStringsConstants` for localized alert strings:
+
+```swift showLineNumbers
+.alert(
+    GlanceLocalizedStringsConstants.dialogErrorTitle,
+    isPresented: $viewModel.showAlertDialog
+) {
+    Button(GlanceLocalizedStringsConstants.dialogErrorPrimaryButton) {}
+    Button(GlanceLocalizedStringsConstants.dialogErrorSecondaryButton, role: .cancel) {}
+} message: {
+    Text(viewModel.errorMessage)
+}
+```
+
+Verify with your Glance admin that the account has hosted session permissions.
+
+**Related errors:** `EventLoginFailed`, `EventStartSessionFailed`
+
+---
+
+## `EventLoginFailed` in `onError`
+
+**Symptoms:** `onError` fires with `error.code == .EventLoginFailed` when starting a hosted session.
+
+**Likely causes:**
+- Wrong username or password.
+- Account disabled or not licensed for hosted session.
+- Custom server URL incorrect.
+
+**Resolution:**
+
+Verify the Glance agent credentials. Show `error.message` to the user and suggest contacting their Glance admin to reset credentials or check account permissions.
+
+```swift showLineNumbers
+func onError(_ error: GlanceError) {
+    if error.code == .EventLoginFailed {
+        showAlert("Login failed", message: error.message)
+    }
+}
+```
+
+---
+
+## Errors not shown to the user — `onError` silent
+
+**Symptoms:** SDK errors occur (e.g. session fails) but the user sees no feedback. App behaves as if nothing happened.
+
+**Likely causes:**
+- `onError` method has an empty body.
+- Delegate not set, so `onError` is never called.
+- UI not bound to observe `showAlertDialog` or equivalent state.
+
+**Resolution:**
+
+Implement `onError` to update observable state that triggers a UI alert:
+
+```swift showLineNumbers
+// In your view model
+@Published var errorMessage = ""
+@Published var showErrorAlert = false
+
+func onError(_ error: GlanceError) {
+    DispatchQueue.main.async {
+        self.errorMessage = error.message
+        self.showErrorAlert = true
+    }
+}
+```
+
+```swift showLineNumbers
+// In your SwiftUI view
+.alert("An error occurred", isPresented: $viewModel.showErrorAlert) {
+    Button("OK") {}
+} message: {
+    Text(viewModel.errorMessage)
+}
+```
+
+For hosted sessions, also handle `hostedSessionDidEnd(errorMessage:)` — errors there are separate from `onError`.
+
+<Callout type="warning">
+Two separate error paths exist for hosted sessions: `onError` (SDK-level errors) and `hostedSessionDidEnd(errorMessage:)` (session-level errors including login failures). Implement both.
+</Callout>
+
+---
+
+## `fetchSettingsInterval` compile error (v7.1 / v7.2)
+
+**Symptoms:** `'SettingsInterval' is not a member type of class 'GlanceSDK.Glance'`. Compile error when using `fetchSettingsInterval`.
+
+**Likely causes:**
+- Using unqualified `SettingsInterval` or wrong module prefix.
+- Copying a v7.1 snippet into a v7.2 project where the parameter no longer exists.
+
+**Resolution:**
+
+**v7.1:** Always qualify as `GlanceDefaultUI.SettingsInterval`:
+
+```swift showLineNumbers
+// ✅ Correct
+GlanceDefaultUI.setVisitorParams(
+    params,
+    fetchSettingsInterval: GlanceDefaultUI.SettingsInterval.never
+)
+
+// ❌ Wrong
+GlanceDefaultUI.setVisitorParams(
+    params,
+    fetchSettingsInterval: SettingsInterval.never   // compile error
+)
+```
+
+**v7.2:** Remove `fetchSettingsInterval` from `setVisitorParams` entirely. Use `Glance.enableSettings` instead:
+
+```swift showLineNumbers
+// v7.2: enable remote settings after setVisitorParams
+import GlanceCore
+
+Glance.enableSettings(isEnabled: true)   // 1-hour refresh
+
+// Or with a custom interval
+Glance.setSettingsAPIRefreshInterval(
+    refreshInterval: GlanceRefreshInterval(intervalInHours: 2)
+)
+```
+
+---
+
+## Related
+
+- [Hosted Sessions guide](../guides/hosted-session)
+- [GlanceLocalizedStringsConstants](../../api/localization-constants)
+- [GlanceUIDelegate: hostedSessionDidEnd](../../api/glance-ui-delegate#hostedsessiondidend)
+- [Types: GlanceSDKEventCode](../../api/types#glancesdkeventcode)

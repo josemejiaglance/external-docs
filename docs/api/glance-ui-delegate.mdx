@@ -1,0 +1,413 @@
+---
+title: GlanceUIDelegate
+description: Full reference for all 30 GlanceUIDelegate protocol methods, organized by category with signatures and when each is called.
+---
+
+import { Callout } from 'nextra/components'
+
+# GlanceUIDelegate
+
+`GlanceUIDelegate` is the protocol your object must conform to in order to receive callbacks from the SDK. Assign your conforming object with `GlanceDefaultUI.setDelegate(_:)`.
+
+```swift showLineNumbers
+class MyViewModel: ObservableObject, GlanceUIDelegate {
+    init() {
+        GlanceDefaultUI.setDelegate(self)
+    }
+    // implement all methods below
+}
+```
+
+<Callout>
+Implement **all** methods. Empty bodies are fine for callbacks you don't need. The SDK calls these methods — you never call them yourself.
+</Callout>
+
+## Session lifecycle
+
+### `sessionConnected(dismissAction:)`
+
+Called when the session is connected and waiting for an agent to join. Default UI shows the waiting dialog automatically.
+
+```swift showLineNumbers
+func sessionConnected(dismissAction: (() -> Void)?)
+```
+
+`dismissAction` is a closure you can invoke to programmatically cancel the wait and dismiss the dialog.
+
+---
+
+### `receivedSessionCode(_:)`
+
+Called when the 4-digit session key is received from the server. Default UI displays the key dialog automatically.
+
+```swift showLineNumbers
+func receivedSessionCode(_ sessionCode: String)
+```
+
+---
+
+### `sessionAgentConnected()`
+
+Called when an agent joins the session. Default UI hides the waiting dialog and begins the screen share (and video, if configured).
+
+```swift showLineNumbers
+func sessionAgentConnected()
+```
+
+---
+
+### `sessionEnded(_:)`
+
+Called when the session ends — either by the visitor, the agent, or the SDK.
+
+```swift showLineNumbers
+func sessionEnded(_ sessionKey: String?)
+```
+
+`sessionKey` is the key of the session that ended, or `nil` if not applicable.
+
+---
+
+### `onGuestCountChange(guests:response:)`
+
+Called when the number of agents (guests) in the session changes.
+
+```swift showLineNumbers
+func onGuestCountChange(guests: [GlanceAgent], response: String?)
+```
+
+---
+
+### `onEvent(_:)`
+
+Called when any SDK event occurs. Useful for logging and for detecting connection quality events.
+
+```swift showLineNumbers
+func onEvent(_ event: GlanceEvent)
+```
+
+Common event codes: `EventConnectionWarning`, `EventClearWarning`. See [GlanceSDKEventCode](./types#glancesdkeventcode) for the full list.
+
+---
+
+### `onError(_:)`
+
+Called when any SDK error occurs.
+
+```swift showLineNumbers
+func onError(_ error: GlanceError)
+```
+
+`error.code` is `GlanceSDKEventCode` (v7.2) or `EventCode` (v7.1). `error.message` is a human-readable description.
+
+Always surface errors to the user:
+
+```swift showLineNumbers
+func onError(_ error: GlanceError) {
+    DispatchQueue.main.async {
+        self.errorMessage = error.message
+        self.showErrorAlert = true
+    }
+}
+```
+
+---
+
+## Timeouts
+
+### `initTimeoutExpired()`
+
+Called when the init (setVisitorParams) timeout expires before the SDK finishes connecting.
+
+```swift showLineNumbers
+func initTimeoutExpired()
+```
+
+Only fired if you set a non-nil `timeout` in `setVisitorParams`.
+
+---
+
+### `startTimeoutExpired()`
+
+Called when the start-session timeout expires — the session key was shown but no agent joined within the allotted time.
+
+```swift showLineNumbers
+func startTimeoutExpired()
+```
+
+Only fired if you pass a non-nil `timeout` to `start(key:timeout:videoMode:)`.
+
+---
+
+## Presence (1-Click Connect)
+
+### `presenceDidConnect()`
+
+Called when the Presence connection to the Glance server is established.
+
+```swift showLineNumbers
+func presenceDidConnect()
+```
+
+---
+
+### `presenceDidDisconnect()`
+
+Called when the Presence connection is lost.
+
+```swift showLineNumbers
+func presenceDidDisconnect()
+```
+
+---
+
+### `presenceShowTerms(sessionParams:)`
+
+Called when an agent has requested a session. Default UI shows the consent dialog automatically. `sessionParams` contains the requested video mode.
+
+```swift showLineNumbers
+func presenceShowTerms(sessionParams: GlanceSessionParams)
+```
+
+---
+
+### `presenceSessionStarted()`
+
+Called when the session has officially started following a Presence-initiated request (after the visitor accepts the terms dialog).
+
+```swift showLineNumbers
+func presenceSessionStarted()
+```
+
+---
+
+### `presenceTimeoutExpired()`
+
+Called when the Presence connection attempt times out.
+
+```swift showLineNumbers
+func presenceTimeoutExpired()
+```
+
+---
+
+## Video
+
+### `didStartPreviewVideoCapture(_:)`
+
+Called when the camera preview starts (in the consent dialog phase, before a session key is obtained).
+
+```swift showLineNumbers
+func didStartPreviewVideoCapture(_ captureSession: AVCaptureSession)
+```
+
+---
+
+### `didStopPreviewVideoCapture(_:)`
+
+Called when the camera preview stops (dialog dismissed or cancelled).
+
+```swift showLineNumbers
+func didStopPreviewVideoCapture(_ captureSession: AVCaptureSession)
+```
+
+---
+
+### `didStartVideoCapture(_:)`
+
+Called when in-session visitor video capture begins (after the agent joins).
+
+```swift showLineNumbers
+func didStartVideoCapture(_ captureSession: AVCaptureSession)
+```
+
+---
+
+### `didStopVideoCapture(_:)`
+
+Called when in-session visitor video capture ends.
+
+```swift showLineNumbers
+func didStopVideoCapture(_ captureSession: AVCaptureSession)
+```
+
+---
+
+### `didPauseVisitorVideo()`
+
+Called when the visitor pauses their video during a session.
+
+```swift showLineNumbers
+func didPauseVisitorVideo()
+```
+
+---
+
+### `didStartAgentViewer(_:)`
+
+Called when the agent's video/cursor view becomes available (two-way video). Default UI positions and displays this view automatically.
+
+```swift showLineNumbers
+func didStartAgentViewer(_ glanceAgentViewer: UIView)
+```
+
+---
+
+### `didStopAgentViewer()`
+
+Called when the agent viewer is removed.
+
+```swift showLineNumbers
+func didStopAgentViewer()
+```
+
+---
+
+### `receivedVideoCaptureImage(_:)`
+
+Called each time a new video frame is captured from the visitor's camera.
+
+```swift showLineNumbers
+func receivedVideoCaptureImage(_ image: UIImage)
+```
+
+---
+
+### `agentAskedForVideoSession()`
+
+Called when the agent requests to start video during an active screen-share session. Default UI shows the Share Video dialog automatically.
+
+```swift showLineNumbers
+func agentAskedForVideoSession()
+```
+
+---
+
+### `askForVideoSession(confirmAction:cancelAction:)`
+
+Called when the SDK needs explicit confirmation before starting video. Call `confirmAction()` to proceed or `cancelAction?()` to decline.
+
+```swift showLineNumbers
+func askForVideoSession(
+    confirmAction: @escaping (() -> Void),
+    cancelAction: (() -> Void)?
+)
+```
+
+---
+
+### `onUpdateAgentVideo()`
+
+Called when the agent's video state is updated (e.g. agent starts or stops their camera).
+
+```swift showLineNumbers
+func onUpdateAgentVideo()
+```
+
+---
+
+## Widget UI updates
+
+### `onUpdateVisibility(to:)`
+
+Called when the widget's visibility state changes (tab vs. full view).
+
+```swift showLineNumbers
+func onUpdateVisibility(to visibility: GlanceVisibility)
+```
+
+`GlanceVisibility` values: `.tab`, `.full`.
+
+---
+
+### `onUpdateLocation(to:)`
+
+Called when the widget moves to a new corner position.
+
+```swift showLineNumbers
+func onUpdateLocation(to location: GlanceLocation)
+```
+
+`GlanceLocation` values: `.topLeft`, `.topRight`, `.bottomLeft`, `.bottomRight`.
+
+---
+
+### `onUpdateSize(size:)`
+
+Called when a widget size update is received.
+
+```swift showLineNumbers
+func onUpdateSize(size: String)
+```
+
+---
+
+## Hosted sessions
+
+### `hostedSessionDidStart(sessionKey:)`
+
+Called when a hosted session has started. `sessionKey` is the 4-digit key the guest uses to join. Default UI displays the key automatically.
+
+```swift showLineNumbers
+func hostedSessionDidStart(sessionKey: String)
+```
+
+---
+
+### `hostedSessionDidEnd(errorMessage:)`
+
+Called when the hosted session ends. If `errorMessage` is non-empty, an error occurred. Always surface a non-empty error to the user.
+
+```swift showLineNumbers
+func hostedSessionDidEnd(errorMessage: String)
+```
+
+```swift showLineNumbers
+func hostedSessionDidEnd(errorMessage: String) {
+    guard !errorMessage.isEmpty else {
+        isHostedSessionActive = false
+        return
+    }
+    self.errorMessage = errorMessage
+    showAlertDialog = true
+}
+```
+
+---
+
+## Minimal conformance template
+
+```swift showLineNumbers
+extension MyViewModel: GlanceUIDelegate {
+    func sessionConnected(dismissAction: (() -> Void)?) {}
+    func receivedSessionCode(_ sessionCode: String) {}
+    func sessionAgentConnected() {}
+    func sessionEnded(_ sessionKey: String?) {}
+    func onGuestCountChange(guests: [GlanceAgent], response: String?) {}
+    func onEvent(_ event: GlanceEvent) {}
+    func onError(_ error: GlanceError) { /* show alert */ }
+    func initTimeoutExpired() {}
+    func startTimeoutExpired() {}
+    func presenceDidConnect() {}
+    func presenceDidDisconnect() {}
+    func presenceShowTerms(sessionParams: GlanceSessionParams) {}
+    func presenceSessionStarted() {}
+    func presenceTimeoutExpired() {}
+    func didStartPreviewVideoCapture(_ captureSession: AVCaptureSession) {}
+    func didStopPreviewVideoCapture(_ captureSession: AVCaptureSession) {}
+    func didStartVideoCapture(_ captureSession: AVCaptureSession) {}
+    func didStopVideoCapture(_ captureSession: AVCaptureSession) {}
+    func didPauseVisitorVideo() {}
+    func didStartAgentViewer(_ glanceAgentViewer: UIView) {}
+    func didStopAgentViewer() {}
+    func receivedVideoCaptureImage(_ image: UIImage) {}
+    func agentAskedForVideoSession() {}
+    func askForVideoSession(confirmAction: @escaping (() -> Void), cancelAction: (() -> Void)?) {}
+    func onUpdateAgentVideo() {}
+    func onUpdateVisibility(to visibility: GlanceVisibility) {}
+    func onUpdateLocation(to location: GlanceLocation) {}
+    func onUpdateSize(size: String) {}
+    func hostedSessionDidStart(sessionKey: String) {}
+    func hostedSessionDidEnd(errorMessage: String) {}
+}
+```

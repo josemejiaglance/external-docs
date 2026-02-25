@@ -1,0 +1,189 @@
+---
+title: Initial Setup
+description: Configure GlanceVisitorInitParams, assign a GlanceUIDelegate, and optionally create a central API wrapper before starting any session.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Initial Setup
+
+Before starting any session type, you must: (1) set visitor parameters, and (2) assign a delegate. This page walks through both, plus the recommended central-wrapper pattern used in the sample app.
+
+## Overview
+
+```swift showLineNumbers
+import GlanceDefaultUI
+import GlanceCore
+
+// 1. Build params
+let params = GlanceVisitorInitParams()
+params.groupid = 33333          // required – from Glance admin
+params.visitorid = "user-123"   // required for Presence; optional otherwise
+params.video = false            // true only if the session will use video
+
+// 2. Set delegate before any start call
+GlanceDefaultUI.setDelegate(self)
+
+// 3. Configure the SDK
+GlanceDefaultUI.setVisitorParams(params)
+```
+
+<Steps>
+
+### Build `GlanceVisitorInitParams`
+
+`GlanceVisitorInitParams` carries all per-session configuration.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `groupid` | `Int` | Yes | Your Glance group ID from the admin portal. Cannot be changed without relaunching the app. |
+| `visitorid` | `String?` | For Presence | Stable visitor identifier (e.g. CRM user ID). Required when using Presence (1-Click Connect). |
+| `video` | `Bool` | No | Set `true` to enable video sessions. Default: `false`. Request camera permission separately before starting. |
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.visitorid = "crm-user-\(currentUser.id)"
+params.video = false
+```
+
+### Call `setVisitorParams`
+
+Pass the params to `GlanceDefaultUI`. You may call this more than once (e.g. if the user changes), but `groupid` cannot be changed without relaunching the app.
+
+**v7.2 signature:**
+
+```swift showLineNumbers
+GlanceDefaultUI.setVisitorParams(
+    params,
+    timeout: nil,                              // Double? – init timeout in seconds
+    maxConnectAttempts: 0,                     // Int – 0 = unlimited retries
+    isDefaultPresenceIntegrationEnabled: true, // use Default UI presence dialogs
+    isDefaultTwoWayVideoIntegration: true,     // use Default UI video dialogs
+    isDefaultRenderModeIntegration: true       // use Default UI render-mode handling
+)
+```
+
+**v7.1 signature** (adds `fetchSettingsInterval`):
+
+```swift showLineNumbers
+GlanceDefaultUI.setVisitorParams(
+    params,
+    timeout: nil,
+    maxConnectAttempts: 0,
+    fetchSettingsInterval: GlanceDefaultUI.SettingsInterval = .never,
+    isDefaultPresenceIntegrationEnabled: true,
+    isDefaultTwoWayVideoIntegration: true,
+    isDefaultRenderModeIntegration: true
+)
+```
+
+<Callout type="info">
+In v7.2, remote settings are configured via `Glance.enableSettings(isEnabled: true)` (1-hour interval) or `Glance.setSettingsAPIRefreshInterval(refreshInterval:)` for custom intervals — not via `setVisitorParams`.
+</Callout>
+
+### Assign a `GlanceUIDelegate`
+
+Set the delegate **before** calling `start()`, `setPresence()`, or `startHostedSession()`. Missing this causes delegate callbacks to never fire.
+
+```swift showLineNumbers
+// In your view model's init() – preferred
+class MySessionViewModel: ObservableObject, GlanceUIDelegate {
+    init() {
+        GlanceDefaultUI.setDelegate(self)
+    }
+}
+```
+
+```swift showLineNumbers
+// Or in onAppear for SwiftUI views
+.onAppear {
+    GlanceDefaultUI.setDelegate(viewModel)
+}
+```
+
+Implement **all** `GlanceUIDelegate` methods — empty bodies are fine for methods you don't need. The SDK will call them; you do not call them yourself.
+
+```swift showLineNumbers
+extension MySessionViewModel: GlanceUIDelegate {
+    func sessionConnected(dismissAction: (() -> Void)?) {}
+    func receivedSessionCode(_ sessionCode: String) {}
+    func sessionAgentConnected() {}
+    func sessionEnded(_ sessionKey: String?) {}
+    func onError(_ error: GlanceError) {
+        // Always surface errors to the user
+        print("Glance error \(error.code): \(error.message)")
+    }
+    // ... implement remaining methods
+}
+```
+
+</Steps>
+
+## Recommended: Central API wrapper
+
+The sample app uses a `GlanceManager` singleton so view models call one class rather than `GlanceDefaultUI` directly. This avoids scattered SDK calls and makes testing easier.
+
+```swift showLineNumbers filename="GlanceManager.swift"
+import GlanceDefaultUI
+import GlanceCore
+
+final class GlanceManager {
+    static let shared = GlanceManager()
+    private init() {}
+
+    func setVisitorParams(
+        _ params: GlanceVisitorInitParams,
+        timeout: Double? = nil,
+        maxConnectAttempts: Int = 0
+    ) {
+        GlanceDefaultUI.setVisitorParams(
+            params,
+            timeout: timeout,
+            maxConnectAttempts: maxConnectAttempts
+        )
+    }
+
+    func startSession(key: String? = nil, timeout: GlanceTimeout? = nil, videoMode: GlanceVideoMode) {
+        GlanceDefaultUI.start(key: key, timeout: timeout, videoMode: videoMode)
+    }
+
+    func endSession() {
+        GlanceDefaultUI.endSession()
+    }
+
+    func setPresence(_ isOn: Bool, timeout: Double? = nil, maxConnectAttempts: Int32? = nil) {
+        GlanceDefaultUI.setPresence(isOn, timeout: timeout, maxConnectAttempts: maxConnectAttempts)
+    }
+
+    func startHostedSession(username: String, password: String) {
+        GlanceDefaultUI.startHostedSession(username: username, password: password)
+    }
+
+    func stopHostedSession() {
+        GlanceDefaultUI.stopHostedSession()
+    }
+}
+```
+
+## Enabling remote settings (v7.2)
+
+To pull remote configuration from the Glance portal, call the core SDK after your initial setup:
+
+```swift showLineNumbers
+import GlanceCore
+
+// Enable with default 1-hour refresh
+Glance.enableSettings(isEnabled: true)
+
+// Or set a custom refresh interval (intervalInHours: -1 disables)
+Glance.setSettingsAPIRefreshInterval(
+    refreshInterval: GlanceRefreshInterval(intervalInHours: 2)
+)
+```
+
+## Next steps
+
+- [Start a Session](../guides/start-session) — visitor-initiated cobrowse
+- [Presence (1-Click Connect)](../guides/presence) — agent-initiated sessions
+- [GlanceUIDelegate Reference](../../api/glance-ui-delegate) — all delegate methods

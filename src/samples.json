@@ -1,0 +1,166 @@
+{
+  "samples": [
+    {
+      "id": "glance-sample-app-root",
+      "name": "Glance Sample App (root)",
+      "path": ".examples/glance-sample-app/glance-sample-app",
+      "description": "Full sample app: landing, home (Simple Session / Advanced / Guides), Simple Session screen, Advanced (TestAppView) with presence/video/timeouts/masking, Hosted tab, Log tab. Use this as the integration guide. List files with get_file_by_path(platform='ios', repo='default_ui', relative_path='.examples/glance-sample-app/glance-sample-app/<file>.swift').",
+      "demonstrates": ["setup", "start-session", "start-session-with-video", "enable-presence", "hosted-session", "end-session", "content-masking", "errors-and-timeouts", "localization"],
+      "keywords": ["sample app", "integration", "reference", "example", "full app"]
+    },
+    {
+      "id": "GlanceManager",
+      "name": "GlanceManager (central API wrapper)",
+      "path": ".examples/glance-sample-app/glance-sample-app/GlanceManager.swift",
+      "description": "Singleton wrapper for all GlanceDefaultUI and Glance core calls: setVisitorParams (full signature with timeout, maxConnectAttempts, fetchSettingsInterval, isDefaultPresenceIntegrationEnabled, isDefaultTwoWayVideoIntegration, isDefaultRenderModeIntegration), setPresence, startSession(key:timeout:videoMode:), endSession, startHostedSession, stopHostedSession, pause, togglePause, pausePresence. Use this pattern so view models call GlanceManager.shared instead of GlanceDefaultUI directly.",
+      "demonstrates": ["setup", "start-session", "start-session-with-video", "enable-presence", "end-session", "hosted-session", "GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start", "GlanceDefaultUI.setPresence", "GlanceDefaultUI.endSession", "GlanceDefaultUI.startHostedSession", "GlanceDefaultUI.stopHostedSession"],
+      "keywords": ["manager", "wrapper", "setVisitorParams", "start", "setPresence", "endSession", "hosted", "integration"]
+    },
+    {
+      "id": "TestAppViewModel",
+      "name": "TestAppViewModel (full GlanceUIDelegate)",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestAppViewModel.swift",
+      "description": "Implements GlanceUIDelegate and GlanceLoggerDelegate. In init(): GlanceDefaultUI.setDelegate(self), Glance.setLoggerDelegate(self). startSession() and startSessionRandomKey(): build GlanceVisitorInitParams (groupid, visitorid, video), optional timeouts and GlanceTimeout, then GlanceManager.shared.setVisitorParams(...) with all integration flags, then GlanceManager.shared.startSession(...). onPresenceTapped(): setPresence then setVisitorParams. onError: sets errorCode, errorMessage, showAlertDialog = true. presenceDidConnect/presenceDidDisconnect update isPresenceConnected. All 30 delegate methods implemented (logging or state). Reference for presence, video, timeouts, and error handling.",
+      "demonstrates": ["setup", "start-session", "start-session-with-video", "enable-presence", "errors-and-timeouts", "GlanceDefaultUI.setDelegate", "GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start", "sessionConnected", "receivedSessionCode", "sessionAgentConnected", "sessionEnded", "presenceDidConnect", "presenceDidDisconnect", "presenceShowTerms", "hostedSessionDidStart", "hostedSessionDidEnd", "onError", "initTimeoutExpired", "startTimeoutExpired", "presenceTimeoutExpired", "timeouts", "GlanceLoggerDelegate"],
+      "keywords": ["delegate", "GlanceUIDelegate", "setDelegate", "startSession", "presence", "video", "timeout", "onError", "error handling", "logging"]
+    },
+    {
+      "id": "TestAppView",
+      "name": "TestAppView (Advanced session UI)",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestAppView.swift",
+      "description": "Tab-based UI: Advanced Session (group ID, visitor ID, key, video mode, Presence toggle, timeouts, fetch settings interval, render mode, masking, pause), Log tab, Hosted tab. onAppear: Glance.maskKeyboard(true), Glance.setDrawViewHierarchy for render option, viewModel.setDelegate(), optional onPresenceTapped/onVideoTapped. Camera: AVCaptureDevice.authorizationStatus and requestAccess(for: .video); show alert if !authorized. Alert for viewModel.showAlertDialog (onError). Builds session start view, timeouts view, masking links (TestMaskingViewController, TestMaskingView, TestWebViewController).",
+      "demonstrates": ["setup", "start-session", "start-session-with-video", "enable-presence", "content-masking", "GlanceDefaultUI.setDelegate", "camera permission", "onError", "alert", "maskKeyboard", "setDrawViewHierarchy"],
+      "keywords": ["camera", "permission", "AVCaptureDevice", "setDelegate", "onAppear", "alert", "masking", "tabs"]
+    },
+    {
+      "id": "HostedViewModel",
+      "name": "HostedViewModel",
+      "path": ".examples/glance-sample-app/glance-sample-app/HostedViewModel.swift",
+      "description": "Hosted session only. init(): GlanceDefaultUI.setDelegate(self). toggleHostedSession(username:password:): if active stopHostedSession else startHostedSession. Implements GlanceUIDelegate with empty bodies for all methods except hostedSessionDidStart (stores sessionKey, isHostedSessionActive = true) and hostedSessionDidEnd (if !errorMessage.isEmpty sets errorMessage and showAlertDialog = true; else clears sessionKey and sets isHostedSessionActive = false). setDelegate() called from HostedView.onAppear. Reference for hosted session and error handling.",
+      "demonstrates": ["hosted-session", "setup", "GlanceDefaultUI.setDelegate", "GlanceDefaultUI.startHostedSession", "GlanceDefaultUI.stopHostedSession", "hostedSessionDidStart", "hostedSessionDidEnd", "onError handling"],
+      "keywords": ["hosted", "startHostedSession", "stopHostedSession", "hostedSessionDidStart", "hostedSessionDidEnd", "error", "alert"]
+    },
+    {
+      "id": "HostedView",
+      "name": "HostedView",
+      "path": ".examples/glance-sample-app/glance-sample-app/HostedView.swift",
+      "description": "SwiftUI view: username, password, server fields; Start/Stop button calling viewModel.toggleHostedSession(username:password:). Displays session key when viewModel.sessionKey is set. onAppear: viewModel.setDelegate(). Alert with GlanceLocalizedStringsConstants.dialogErrorTitle, dialogErrorPrimaryButton, dialogErrorSecondaryButton when viewModel.showAlertDialog (hostedSessionDidEnd with error).",
+      "demonstrates": ["hosted-session", "GlanceDefaultUI.setDelegate", "GlanceLocalizedStringsConstants", "hostedSessionDidStart", "hostedSessionDidEnd"],
+      "keywords": ["hosted", "SwiftUI", "setDelegate", "onAppear", "localization", "dialogErrorTitle"]
+    },
+    {
+      "id": "SimpleSessionViewModel",
+      "name": "SimpleSessionViewModel (minimal start)",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/SimpleSessionView/SimpleSessionViewModel.swift",
+      "description": "Minimal visitor-initiated session: GlanceVisitorInitParams with groupid only, GlanceManager.shared.setVisitorParams(params), GlanceManager.shared.startSession(key: sessionKey, videoMode: VideoOff). No presence, no video, no timeouts. Good reference for basic start flow.",
+      "demonstrates": ["setup", "start-session", "GlanceDefaultUI.setVisitorParams", "GlanceDefaultUI.start"],
+      "keywords": ["simple", "minimal", "start", "setVisitorParams", "VideoOff"]
+    },
+    {
+      "id": "SimpleSessionView",
+      "name": "SimpleSessionView",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/SimpleSessionView/SimpleSessionView.swift",
+      "description": "UI for SimpleSessionViewModel: Group ID and Session Key fields, Start button, description text. Calls viewModel.startSession() on tap.",
+      "demonstrates": ["start-session"],
+      "keywords": ["simple", "session", "start button"]
+    },
+    {
+      "id": "TestMaskingViewController",
+      "name": "TestMaskingViewController (UIView masking)",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestMaskingViewController.swift",
+      "description": "UIKit: UITextField, UILabel, UIButton. In setupMasking(): Glance.addMaskedView(textField, withLabel: 'Masked text field'), Glance.addMaskedView(label, withLabel: 'Masked label'), Glance.addMaskedView(button, withLabel: 'Masked button'). Add Mask View button adds MaskingTestView subview. Reference for native UIView masking.",
+      "demonstrates": ["content-masking", "Glance.addMaskedView"],
+      "keywords": ["masking", "addMaskedView", "UIView", "UIKit"]
+    },
+    {
+      "id": "TestMaskingView",
+      "name": "TestMaskingView (SwiftUI masking)",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestMaskingView.swift",
+      "description": "SwiftUI: TextField, Text, Button with .addMaskedView(withLabel: '...') modifier. Reference for SwiftUI content masking (GlanceSDK MaskedViewModifier).",
+      "demonstrates": ["content-masking", "Glance.addMaskedView", "SwiftUI masking"],
+      "keywords": ["masking", "SwiftUI", "addMaskedView", "modifier"]
+    },
+    {
+      "id": "TestWebViewController",
+      "name": "TestWebViewController (WebView masking)",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestWebViewController.swift",
+      "description": "GlanceMaskContentController with CSS selectors and labels (e.g. '.mask_1', '.mask_2', '#mask_3'), set on WKWebViewConfiguration.userContentController, create WKWebView with that config, add to view, then glanceMaskContentController.setWebView(maskingWebView). Load URL. When the WebView is in a tab or off-screen, set webView.isHidden = true when not visible and isHidden = false when visible so masking behaves correctly. Reference for WebView content masking.",
+      "demonstrates": ["content-masking", "GlanceMaskContentController", "WKWebView"],
+      "keywords": ["masking", "WebView", "GlanceMaskContentController", "WKWebView", "userContentController"]
+    },
+    {
+      "id": "AppCoordinator",
+      "name": "AppCoordinator (navigation)",
+      "path": ".examples/glance-sample-app/glance-sample-app/Coordinator/AppCoordinator.swift",
+      "description": "Navigation: start() -> showLandingScreenView -> showHomeView (Simple Session / Advanced / Guides). showSimpleSessionView pushes SimpleSessionView; showTestAppView pushes TestAppView (Hosted tab inside); showInfoView, showGuidesView (TestWebViewController for help URL), showTestWebMaskingView(url), showTestMaskingView (TestMaskingViewController), showTestMaskingSwiftUIView (TestMaskingView). Toast: presentToolbarMessage. Shows where setDelegate and Glance screens are triggered in app structure.",
+      "demonstrates": ["setup", "navigation", "content-masking"],
+      "keywords": ["coordinator", "navigation", "SimpleSession", "TestApp", "Hosted", "masking"]
+    },
+    {
+      "id": "GlanceHomeView",
+      "name": "GlanceHomeView",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/HomeView/GlanceHomeView.swift",
+      "description": "Home screen with options: Simple Session, Advanced, Guides. Fires navigationEvents for AppCoordinator.",
+      "demonstrates": ["setup"],
+      "keywords": ["home", "navigation"]
+    },
+    {
+      "id": "GlanceHomeViewModel",
+      "name": "GlanceHomeViewModel",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/HomeView/GlanceHomeViewModel.swift",
+      "description": "ViewModel for GlanceHomeView; navigation events for simpleSession, advanced, guides.",
+      "demonstrates": ["setup"],
+      "keywords": ["home"]
+    },
+    {
+      "id": "GlanceLandingScreenView",
+      "name": "GlanceLandingScreenView",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/LandingScreen/GlanceLandingScreenView.swift",
+      "description": "Landing screen; triggers showHomeView.",
+      "demonstrates": ["setup"],
+      "keywords": ["landing"]
+    },
+    {
+      "id": "LogView",
+      "name": "LogView",
+      "path": ".examples/glance-sample-app/glance-sample-app/Screens/Log/LogView.swift",
+      "description": "Log tab: displays SDK messages, events, errors, diagnostic (from TestAppViewModel GlanceUIDelegate and GlanceLoggerDelegate). Share logs via Glance.logFilePath.",
+      "demonstrates": ["GlanceUIDelegate", "GlanceLoggerDelegate", "logging", "shareLogs"],
+      "keywords": ["log", "debug", "share", "diagnostic"]
+    },
+    {
+      "id": "MaskingTestView",
+      "name": "MaskingTestView",
+      "path": ".examples/glance-sample-app/glance-sample-app/TestViews/MaskingTestView.swift",
+      "description": "Custom view used in TestMaskingViewController addMaskView; can contain additional masked subviews.",
+      "demonstrates": ["content-masking"],
+      "keywords": ["masking", "subview"]
+    },
+    {
+      "id": "SceneDelegate",
+      "name": "SceneDelegate",
+      "path": ".examples/glance-sample-app/glance-sample-app/SceneDelegate.swift",
+      "description": "Scene lifecycle; calls appCoordinator?.start() to begin navigation.",
+      "demonstrates": ["setup"],
+      "keywords": ["scene", "app launch"]
+    },
+    {
+      "id": "AppDelegate",
+      "name": "AppDelegate",
+      "path": ".examples/glance-sample-app/glance-sample-app/AppDelegate.swift",
+      "description": "App delegate; configures window and scene.",
+      "demonstrates": ["setup"],
+      "keywords": ["app delegate"]
+    },
+    {
+      "id": "create-xcframework",
+      "name": "create_xcframework.sh",
+      "path": ".examples/glance-sample-app/create_xcframework.sh",
+      "description": "Script to build GlanceSDK as XCFramework: archive for Simulator and Device, then xcodebuild -create-xcframework with both frameworks. Use when integrating via XCFrameworks instead of SPM.",
+      "demonstrates": ["setup"],
+      "keywords": ["xcframework", "archive", "build", "SPM alternative"]
+    }
+  ],
+  "sample_repo_root": "PublicRepo/glance-default-ui-ios-releases (or GLANCE_SDK_REPO_ROOT). Paths in samples are relative to this repo. Use get_file_by_path(platform='ios', repo='default_ui', relative_path=<path>) to fetch file content.",
+  "find_sample_usage": "find_sample(flow_id='start-session') or find_sample(method_id='GlanceDefaultUI.setVisitorParams') or find_sample(keyword='hosted') returns matching samples; then use get_file_by_path to read the path."
+}

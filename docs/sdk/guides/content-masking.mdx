@@ -1,0 +1,141 @@
+---
+title: Content Masking
+description: Prevent sensitive UI elements from being visible to the agent during a screen share session. Covers UIView, SwiftUI, and WKWebView masking.
+---
+
+import { Callout, Tabs } from 'nextra/components'
+
+# Content Masking
+
+Content masking lets you redact specific UI elements so the agent sees a placeholder label instead of the actual content. This is critical for fields containing PII — account numbers, SSNs, passwords, and similar data.
+
+Masking is provided by the core `GlanceSDK` module. Import `GlanceCore` in any file that calls masking APIs.
+
+```swift showLineNumbers
+import GlanceCore   // Glance.addMaskedView, GlanceMaskContentController
+import GlanceDefaultUI
+```
+
+## UIView masking
+
+Mask any `UIView` (text field, label, button, image view, etc.) with a single call:
+
+```swift showLineNumbers filename="TestMaskingViewController.swift"
+// Mask a view with a label
+Glance.addMaskedView(textField, withLabel: "Account Number")
+Glance.addMaskedView(ssnLabel, withLabel: "SSN")
+Glance.addMaskedView(profileImageView, withLabel: "Profile Photo")
+
+// Remove a mask
+Glance.removeMaskedView(textField)
+```
+
+The agent sees a solid redaction rectangle with the optional label text. The mask follows the view's frame automatically.
+
+<Callout type="info">
+Add masks after the views are in the window hierarchy. Masking a view before it is added to the hierarchy may not work.
+</Callout>
+
+## SwiftUI masking
+
+Use the `.addMaskedView(withLabel:)` view modifier (from `GlanceSDK`) on any SwiftUI view:
+
+```swift showLineNumbers filename="TestMaskingView.swift"
+import GlanceCore
+
+struct ProfileSection: View {
+    var body: some View {
+        VStack {
+            TextField("Account number", text: $accountNumber)
+                .addMaskedView(withLabel: "Account Number")
+
+            Text(ssnText)
+                .addMaskedView(withLabel: "SSN")
+        }
+    }
+}
+```
+
+Alternatively, wrap a SwiftUI view in `UIHostingController` and mask `hostingController.view`:
+
+```swift showLineNumbers
+let hostingController = UIHostingController(rootView: SensitiveView())
+Glance.addMaskedView(hostingController.view, withLabel: "Sensitive Area")
+```
+
+## WebView masking
+
+Use `GlanceMaskContentController` to mask DOM elements by CSS selector. The controller must be set on `WKWebViewConfiguration.userContentController` **before** the `WKWebView` is created.
+
+```swift showLineNumbers filename="TestWebViewController.swift"
+import GlanceCore
+import WebKit
+
+// 1. Create the mask controller with CSS selectors and labels
+let glanceMaskContentController = GlanceMaskContentController(
+    ".account-number, #ssn-field, .credit-card",
+    labels: "Account Number, SSN, Credit Card"
+)
+
+// 2. Attach to the web view configuration BEFORE creating WKWebView
+let config = WKWebViewConfiguration()
+config.userContentController = glanceMaskContentController
+
+// 3. Create the web view with that config
+let webView = WKWebView(frame: view.bounds, configuration: config)
+view.addSubview(webView)
+
+// 4. Register the web view with the mask controller
+glanceMaskContentController.setWebView(webView)
+
+// 5. Load your content
+webView.load(URLRequest(url: URL(string: "https://example.com/account")!))
+```
+
+### WebView visibility and tab management
+
+WebView masking is active as long as `webView.isHidden == false`. When the WebView is held in memory but not visible (e.g. the user switches to another tab), you **must** update `isHidden` to match the actual visibility:
+
+```swift showLineNumbers
+// When the tab/view containing the WebView becomes hidden
+webView.isHidden = true
+
+// When it becomes visible again
+webView.isHidden = false
+```
+
+<Callout type="warning">
+If `isHidden` is `false` while the WebView is off-screen, the agent may still see masked regions rendered in the share stream. Always keep `isHidden` in sync with the WebView's actual visibility.
+</Callout>
+
+## Keyboard masking
+
+To prevent the system keyboard from being visible to the agent:
+
+```swift showLineNumbers
+Glance.maskKeyboard(true)   // mask the keyboard
+Glance.maskKeyboard(false)  // unmask if needed
+```
+
+The mask label is controlled by `GlanceLocalizedStringsConstants.keyboardMaskLabel`.
+
+## Background masking
+
+The Default UI automatically applies a background mask when the app goes to the background (`backgroundPauseMaskLabel`) or is suspended (`backgroundSuspendMaskLabel`). You do not need to add these yourself.
+
+## Summary table
+
+| Content type | API | Notes |
+|---|---|---|
+| `UIView` | `Glance.addMaskedView(_:withLabel:)` | Works for any `UIView` subclass |
+| `UIView` removal | `Glance.removeMaskedView(_:)` | |
+| SwiftUI | `.addMaskedView(withLabel:)` modifier | From `GlanceSDK` |
+| SwiftUI (alt) | `UIHostingController` + `addMaskedView` | Mask the hosting controller's view |
+| WKWebView | `GlanceMaskContentController` + `setWebView` | Set config before creating WKWebView |
+| Keyboard | `Glance.maskKeyboard(true)` | |
+
+## Next steps
+
+- [Localization](./localization) — customize mask label text
+- [GlanceLocalizedStringsConstants](../../api/localization-constants)
+- [Troubleshooting: Masking](../troubleshooting/setup-and-masking#masking-not-working)

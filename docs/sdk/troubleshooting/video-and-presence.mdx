@@ -1,0 +1,198 @@
+---
+title: Video & Presence
+description: Troubleshoot video capture issues, camera permissions, Presence connection failures, and presence timeout problems.
+---
+
+# Video & Presence
+
+## Video not starting — `didStartVideoCapture` never called
+
+**Symptoms:** Visitor video preview works in the dialog, but in-session video never starts. Agent cannot see visitor video.
+
+**Likely causes:**
+- `params.video = false` (default) — video not enabled in init params.
+- `start()` called with `videoMode: VideoOff`.
+- Camera permission denied.
+- App or OS stopped the capture session.
+
+**Resolution:**
+
+```swift showLineNumbers
+// 1. Set video = true in params
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.video = true   // ← required
+
+GlanceDefaultUI.setVisitorParams(params)
+
+// 2. Start with a video mode (not VideoOff)
+GlanceDefaultUI.start(key: nil, timeout: nil, videoMode: VideoSmallVisitor)
+```
+
+Do not manually start or stop the `AVCaptureSession` — the SDK manages it.
+
+---
+
+## Video preview black / camera not accessible
+
+**Symptoms:** Camera preview in the consent dialog is black or blank. `didStartPreviewVideoCapture` never fires.
+
+**Likely causes:**
+- Camera permission not granted.
+- User previously denied permission.
+- `NSCameraUsageDescription` missing from `Info.plist`.
+
+**Resolution:**
+
+Add `NSCameraUsageDescription` to `Info.plist` and request permission before starting a video session:
+
+```swift showLineNumbers
+import AVFoundation
+
+func checkCameraPermission() {
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .authorized:
+        break
+    case .notDetermined:
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            if !granted {
+                DispatchQueue.main.async { self.showCameraAlert = true }
+            }
+        }
+    default:
+        showCameraAlert = true
+    }
+}
+```
+
+Show an alert directing the user to Settings if access is denied:
+
+```swift showLineNumbers
+.alert("Camera Access Required", isPresented: $showCameraAlert) {
+    Button("Go to Settings") {
+        UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+    }
+    Button("Cancel", role: .cancel) {}
+}
+```
+
+---
+
+## Agent requests video mid-session — user sees no prompt
+
+**Symptoms:** Agent clicks "Start Video" on their side but the visitor sees no dialog and video does not start.
+
+**Likely causes:**
+- `askForVideoSession(confirmAction:cancelAction:)` not implemented or `confirmAction()` not called.
+- `isDefaultTwoWayVideoIntegration` was set to `false` in `setVisitorParams`.
+
+**Resolution:**
+
+Implement `askForVideoSession` and call `confirmAction()`:
+
+```swift showLineNumbers
+func askForVideoSession(
+    confirmAction: @escaping (() -> Void),
+    cancelAction: (() -> Void)?
+) {
+    // If using Default UI integration (default): SDK handles this automatically
+    // If handling manually: present your own UI then call confirmAction()
+    confirmAction()
+}
+```
+
+If `isDefaultTwoWayVideoIntegration: true` (the default), the Default UI handles the dialog automatically and `agentAskedForVideoSession()` fires for informational purposes only.
+
+---
+
+## Black screen / blank screen share
+
+**Symptoms:** Agent sees a black screen during screen share. Visitor view appears blank.
+
+**Likely causes:**
+- The shared view is not in the active window hierarchy.
+- App went to background (SDK applies a mask automatically).
+- Render mode mismatch — `Glance.setDrawViewHierarchy` value.
+
+**Resolution:**
+
+Ensure all views being shared are in the active window. If your app uses `Glance.setDrawViewHierarchy(true)`, make sure this matches your render mode configuration:
+
+```swift showLineNumbers
+// Match sample app: set based on user-selected render option
+Glance.setDrawViewHierarchy(true)
+```
+
+If the app is in the background, the SDK displays a `backgroundPauseMaskLabel` — this is expected behavior.
+
+---
+
+## Presence does not connect
+
+**Symptoms:** `presenceDidConnect()` never fires. Presence spinner keeps running. `EventPresenceConnectFail` in `onError`.
+
+**Likely causes:**
+- `visitorid` missing or empty in `GlanceVisitorInitParams`.
+- `setVisitorParams` not called with the same params after `setPresence(true)`.
+- Network or firewall blocking WebSocket connections.
+- Presence not enabled for the Glance group.
+
+**Resolution:**
+
+Use a stable, non-empty `visitorid`. Call `setPresence(true)` first, then `setVisitorParams`:
+
+```swift showLineNumbers
+let params = GlanceVisitorInitParams()
+params.groupid = 33333
+params.visitorid = "crm-user-\(currentUser.id)"   // must be stable and non-empty
+
+// Enable Presence first
+GlanceDefaultUI.setPresence(true, timeout: 30, maxConnectAttempts: 3)
+
+// Then configure visitor params with the same visitorid
+GlanceDefaultUI.setVisitorParams(params)
+```
+
+Verify with your Glance admin that Presence is enabled for your group. Implement `onError` to catch `EventPresenceConnectFail` and surface it to the user.
+
+**Related errors:** `EventPresenceConnectFail`, `EventPresenceNotConfigured`, `EventPresenceDisconnected`
+
+---
+
+## `presenceTimeoutExpired` — Presence connection timed out
+
+**Symptoms:** `presenceTimeoutExpired()` fires. Presence never connects.
+
+**Likely causes:**
+- Network delay or Presence server unreachable.
+- Timeout set too short.
+- Firewall blocking WebSocket.
+
+**Resolution:**
+
+Increase or remove the Presence timeout:
+
+```swift showLineNumbers
+// No timeout — wait indefinitely
+GlanceDefaultUI.setPresence(true, timeout: nil, maxConnectAttempts: nil)
+
+// Longer timeout — 60 seconds
+GlanceDefaultUI.setPresence(true, timeout: 60, maxConnectAttempts: 3)
+```
+
+Implement `presenceTimeoutExpired()` to update UI:
+
+```swift showLineNumbers
+func presenceTimeoutExpired() {
+    isPresenceConnected = false
+    showToast("Presence connection timed out. Try again.")
+}
+```
+
+---
+
+## Related
+
+- [Video Sessions guide](../guides/video-session)
+- [Presence guide](../guides/presence)
+- [GlanceUIDelegate: video methods](../../api/glance-ui-delegate#video)
