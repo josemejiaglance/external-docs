@@ -375,6 +375,110 @@ Strip Hugo image shortcode query params:
 
 All other `.md` files should become `.mdx`.
 
+## Steps Component
+
+Use `Steps` for sequential, ordered processes (installation, setup, integration flows).
+
+```mdx
+import { Steps } from 'nextra/components'
+
+<Steps>
+### Step one title
+
+Step content — can include code blocks, callouts, and any MDX.
+
+### Step two title
+
+More content.
+</Steps>
+```
+
+- Each `###` inside `<Steps>` becomes a numbered step automatically
+- Do **not** number headings manually (`1.`, `2.`) — `Steps` handles that
+- Use `Steps` instead of a plain ordered list whenever steps contain code or sub-structure
+
+## Tabs Component
+
+Use `Tabs` when the same concept has multiple implementations (languages, package managers, OS variants).
+
+```mdx
+import { Tabs } from 'nextra/components'
+
+<Tabs items={['Swift', 'Objective-C']}>
+  <Tabs.Tab>
+  ```swift showLineNumbers
+  // Swift implementation
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```objectivec showLineNumbers
+  // Obj-C implementation
+  ```
+  </Tabs.Tab>
+</Tabs>
+```
+
+- `items` array order must match `<Tabs.Tab>` order
+- Each `<Tabs.Tab>` is independent MDX — it can contain any content, not just code
+- Never use `Tabs` for fewer than 2 variants
+
+## Callout Component
+
+```mdx
+import { Callout } from 'nextra/components'
+
+<Callout>Default style — use for general notes.</Callout>
+<Callout type="info">Informational — tips, clarifications.</Callout>
+<Callout type="warning">Caution — non-breaking issues, deprecations.</Callout>
+<Callout type="error">Breaking or dangerous actions.</Callout>
+```
+
+- Default (`no type`) renders a neutral callout
+- Use `type="warning"` for version-difference notices and deprecations
+- Use `type="error"` sparingly — only for data loss or irreversible consequences
+
+## Anchor Slugs (github-slugger)
+
+Nextra uses [github-slugger](https://github.com/Flet/github-slugger) to convert headings into URL anchors.
+
+**Algorithm:**
+1. Lowercase all text
+2. Replace every contiguous sequence of non-alphanumeric characters with a single `-`
+3. Trim leading and trailing `-`
+
+**Examples:**
+
+| Heading | Anchor |
+|---|---|
+| `## Getting Started` | `#getting-started` |
+| `## GlanceSDKEventCode` | `#glancesdkeventcode` |
+| `### \`methodName(param:)\`` | `#methodname-param` |
+| `### \`hostedSessionDidEnd(errorMessage:)\`` | `#hostedsessiondidend-errormessage` |
+| `## Not working — agent sees content` | `#not-working-agent-sees-content` |
+
+> Em dashes (`—`), parentheses, colons, backticks, and all other non-alphanumeric characters are treated as non-alphanumeric — they merge with adjacent whitespace into a single `-`.
+
+**Always derive anchor `#` values from actual heading text.** Never guess or abbreviate.
+
+## `_meta.js` Separators
+
+Add visual section dividers between sidebar groups using a `type: 'separator'` entry:
+
+```javascript
+export default {
+  overview: 'Overview',
+  '---': {
+    type: 'separator',
+    title: 'Guides',
+  },
+  'start-session': 'Start a Session',
+  'video-session': 'Video Sessions',
+}
+```
+
+- The key (e.g. `'---'`) is arbitrary but must be unique within the file
+- `title` is optional — omit it for a plain horizontal rule
+
 ## Heading Hierarchy
 
 Every page MUST have exactly one explicit H1 (`#`) heading. Nextra does **not** auto-generate an H1 from front matter.
