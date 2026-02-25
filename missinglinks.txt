@@ -1,0 +1,85 @@
+External Links to Verify
+========================
+These are all external URLs referenced in the docs. Verify each one is
+accessible and points to the right destination before publishing.
+
+────────────────────────────────────────────────────────────────────────
+
+1. GitLab — GlanceDefaultUI iOS Releases (README)
+   File : docs/sdk/index.mdx (line 60)
+   URL  : https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases/-/blob/main/README.md
+   Used : Inline link in "What's included" section
+
+2. GitLab — GlanceDefaultUI iOS Releases (releases page)
+   File : docs/sdk/getting-started/installation.mdx (line 56)
+   URL  : https://gitlab.com/glance-sdk-public/glance-default-ui-ios-releases
+   Used : "Replace <LATEST_VERSION> with the current release tag from the releases page"
+
+3. GitLab — GlanceFramework iOS
+   File : docs/sdk/getting-started/installation.mdx (line 78)
+   URL  : https://gitlab.com/glance-sdk-public/glance-framework-ios
+   Used : Manual download instruction for the release .zip
+
+4. Glance Agent Join (public web app)
+   File : docs/sdk/troubleshooting/session-issues.mdx (line 157)
+         docs/sdk/guides/start-session.mdx (line 102)
+   URL  : https://www.glance.net/agentjoin
+   Used : Instruction for agent to log in and enter the 4-digit session key
+
+────────────────────────────────────────────────────────────────────────
+
+Broken Anchor Fragments Fixed
+==============================
+The following anchors were wrong and have already been corrected in code:
+
+- docs/sdk/troubleshooting/hosted-and-errors.mdx
+  OLD : ../../api/glance-ui-delegate#hostedsessiondidend
+  NEW : ../../api/glance-ui-delegate#hostedsessiondidend-errormessage
+  (Heading is `hostedSessionDidEnd(errorMessage:)` → slug includes the param)
+
+- docs/sdk/guides/content-masking.mdx
+  OLD : ../troubleshooting/setup-and-masking#masking-not-working
+  NEW : ../troubleshooting/setup-and-masking#content-masking-not-working-agent-sees-masked-content
+  (Heading is "Content masking not working — agent sees masked content")
+
+────────────────────────────────────────────────────────────────────────
+
+All Internal Page Links
+========================
+Every card href and inline link below resolves to an existing MDX file. ✅
+
+docs/sdk/index.mdx
+  ./getting-started       → sdk/getting-started/index.mdx ✅
+  ./guides                → sdk/guides/index.mdx          ✅
+  ../api                  → api/index.mdx                 ✅
+  ./troubleshooting       → sdk/troubleshooting/index.mdx ✅
+
+docs/sdk/sample-app/index.mdx
+  ./key-files             → sdk/sample-app/key-files.mdx  ✅
+  ../getting-started      → sdk/getting-started/index.mdx ✅
+
+docs/sdk/getting-started/index.mdx
+  ./installation          → sdk/getting-started/installation.mdx ✅
+  ./setup                 → sdk/getting-started/setup.mdx        ✅
+  ../guides/start-session → sdk/guides/start-session.mdx         ✅
+  ../../api               → api/index.mdx                        ✅
+
+docs/sdk/guides/index.mdx
+  ./start-session         → sdk/guides/start-session.mdx  ✅
+  ./video-session         → sdk/guides/video-session.mdx  ✅
+  ./presence              → sdk/guides/presence.mdx       ✅
+  ./hosted-session        → sdk/guides/hosted-session.mdx ✅
+  ./content-masking       → sdk/guides/content-masking.mdx ✅
+  ./localization          → sdk/guides/localization.mdx   ✅
+
+docs/sdk/troubleshooting/index.mdx
+  ./session-issues        → sdk/troubleshooting/session-issues.mdx   ✅
+  ./video-and-presence    → sdk/troubleshooting/video-and-presence.mdx ✅
+  ./hosted-and-errors     → sdk/troubleshooting/hosted-and-errors.mdx  ✅
+  ./setup-and-masking     → sdk/troubleshooting/setup-and-masking.mdx  ✅
+
+docs/api/index.mdx
+  ./glance-default-ui     → api/glance-default-ui.mdx     ✅
+  ./glance-ui-delegate    → api/glance-ui-delegate.mdx    ✅
+  ./types                 → api/types.mdx                 ✅
+  ./localization-constants → api/localization-constants.mdx ✅
